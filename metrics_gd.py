@@ -3,8 +3,170 @@ import copy
 import networkx as nx
 import time
 
-from shapely.geometry import LineString
+import shapely as sh
 
+def crossing_res(coords, gtds):
+
+    curr_min_angle = 360
+
+    adj_matrix = copy.deepcopy(gtds)
+    adj_matrix[adj_matrix > 1] = 0
+    graph = nx.from_numpy_array(adj_matrix)
+    graph = nx.convert_node_labels_to_integers(graph)
+
+    edges = list(graph.edges())
+
+    # loop over all the edges
+    for i in range(len(edges)):
+        edge1 = edges[i]
+
+        # get the line of the first edge
+        c1 = [(coords[edge1[0]][0], coords[edge1[0]][1]), (coords[edge1[1]][0], coords[edge1[1]][1])]
+
+        # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
+        if c1[0] == c1[1]:
+            continue
+
+        slope1 = (c1[1][1] - c1[0][1]) / (c1[1][0] - c1[0][0])
+        first_line = sh.LineString(c1)
+
+        # loop over the other edges starting from i (duplicate crossings won't be counted then)
+        for j in range(i, len(edges)):
+            edge2 = edges[j]
+
+            # only check if edges cross if they do not share a node
+            if edge1[0] not in edge2 and edge1[1] not in edge2:
+                c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
+                second_line = sh.LineString(c2)
+
+                # if there is an intersection increase the ocunt
+                if first_line.intersects(second_line):
+                    slope2 = (c2[1][1] - c2[0][1]) / (c2[1][0] - c2[0][0])
+                    angle = abs((slope2 - slope1) / (1 + slope1 * slope2))
+                    deg_angle = np.arctan(angle) * 180 / np.pi
+
+                    if deg_angle < curr_min_angle:
+                        curr_min_angle = deg_angle
+
+    if curr_min_angle == 360:
+        cross_res = 1
+    else:
+        cross_res = curr_min_angle / 90
+
+    return cross_res
+
+def crossings_number(coords, gtds):
+
+    cnt = 0
+
+    adj_matrix = copy.deepcopy(gtds)
+    adj_matrix[adj_matrix > 1] = 0
+    graph = nx.from_numpy_array(adj_matrix)
+    graph = nx.convert_node_labels_to_integers(graph)
+
+    edges = list(graph.edges())
+
+    # loop over all the edges
+    for i in range(len(edges)):
+        edge1 = edges[i]
+
+        # get the line of the first edge
+        c1 = [(coords[edge1[0]][0], coords[edge1[0]][1]), (coords[edge1[1]][0], coords[edge1[1]][1])]
+
+        # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
+        if c1[0] == c1[1]:
+            continue
+
+        first_line = sh.LineString(c1)
+
+        # loop over the other edges starting from i (duplicate crossings won't be counted then)
+        for j in range(i, len(edges)):
+            edge2 = edges[j]
+
+            # only check if edges cross if they do not share a node
+            if edge1[0] not in edge2 and edge1[1] not in edge2:
+                c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
+                second_line = sh.LineString(c2)
+
+                # if there is an intersection increase the ocunt
+                if first_line.intersects(second_line):
+                    cnt += 1
+
+    cnt = 1 - (cnt / (len(edges) * (len(edges) - 1) / 2))
+
+    return cnt
+
+
+def norm_stress(coords, gtds, stress_alpha):
+
+    with np.errstate(divide = 'ignore'):
+        # compute the weights and set the numbers that turned to infinity (the 0 on the diagonals) to 0
+        weights = np.array(gtds).astype(float) ** -stress_alpha
+        weights[weights == float('inf')] = 0
+
+    # calculate the euclidean distances
+    eucl_dis = np.sqrt(np.sum(((np.expand_dims(coords, axis = 1) - coords) ** 2), 2))
+
+    # compute stress by multiplying the distances with the graph theoretic distances, squaring it, multiplying by the weight factor and then taking the sum
+    stress_tot = np.sum(weights * ((eucl_dis - gtds) ** 2))
+    ns = 1 - (stress_tot / (np.shape(coords)[0] ** 2))
+
+    return ns
+
+
+def node_resolution(coords, gtds, stress_alpha):
+
+    with np.errstate(divide = 'ignore'):
+        # compute the weights and set the numbers that turned to infinity (the 0 on the diagonals) to 0
+        weights = np.array(gtds).astype(float) ** -stress_alpha
+        weights[weights == float('inf')] = 0
+
+    # calculate the euclidean distances
+    eucl_dis = np.sqrt(np.sum(((np.expand_dims(coords, axis = 1) - coords) ** 2), 2))
+
+    # node resolution computation
+    max_dis = np.max(eucl_dis[np.nonzero(eucl_dis)])
+    min_dis = np.min(eucl_dis[np.nonzero(eucl_dis)])
+    nr = min_dis / max_dis
+
+    return nr
+
+"""
+A simple function for computing the overall stress of the current layout
+
+Input
+final_g_dict:   dict, a dictionary containg the coordinates "coords", a graph object G "G", the graph theoretic distances "gtds" and the stress alpha "stress_alpha"
+
+Output
+stress_tot:     float, the current total number of stress
+"""
+
+
+def norm_stress_node_resolution_metric(coords, gtds, stress_alpha):
+
+    start = time.time()
+
+    with np.errstate(divide = 'ignore'):
+        # compute the weights and set the numbers that turned to infinity (the 0 on the diagonals) to 0
+        weights = np.array(gtds).astype(float) ** -stress_alpha
+        weights[weights == float('inf')] = 0
+
+    # calculate the euclidean distances
+    eucl_dis = np.sqrt(np.sum(((np.expand_dims(coords, axis = 1) - coords) ** 2), 2))
+
+    # node resolution computation
+    max_dis = np.max(eucl_dis[np.nonzero(eucl_dis)])
+    min_dis = np.min(eucl_dis[np.nonzero(eucl_dis)])
+    nr = min_dis / max_dis
+
+    # compute stress by multiplying the distances with the graph theoretic distances, squaring it, multiplying by the weight factor and then taking the sum
+    stress_tot = np.sum(weights * ((eucl_dis - gtds) ** 2))
+    ns = 1 - (stress_tot / (np.shape(coords)[0] ** 2))
+
+    #print('ns' + str(round(time.time() - start, 2)))
+
+    #return ns, nr
+    return ns
 
 def crossing_res_and_crossings_metric(coords, gtds):
 
@@ -64,44 +226,6 @@ def crossing_res_and_crossings_metric(coords, gtds):
 
     #print('cr and cn ' + str(round(time.time() - start, 2)))
     return cross_res, cnt
-
-
-"""
-A simple function for computing the overall stress of the current layout
-
-Input
-final_g_dict:   dict, a dictionary containg the coordinates "coords", a graph object G "G", the graph theoretic distances "gtds" and the stress alpha "stress_alpha"
-
-Output
-stress_tot:     float, the current total number of stress
-"""
-
-
-def norm_stress_node_resolution_metric(coords, gtds, stress_alpha):
-
-    start = time.time()
-
-    with np.errstate(divide = 'ignore'):
-        # compute the weights and set the numbers that turned to infinity (the 0 on the diagonals) to 0
-        weights = np.array(gtds).astype(float) ** -stress_alpha
-        weights[weights == float('inf')] = 0
-
-    # calculate the euclidean distances
-    eucl_dis = np.sqrt(np.sum(((np.expand_dims(coords, axis = 1) - coords) ** 2), 2))
-
-    # node resolution computation
-    max_dis = np.max(eucl_dis[np.nonzero(eucl_dis)])
-    min_dis = np.min(eucl_dis[np.nonzero(eucl_dis)])
-    nr = min_dis / max_dis
-
-    # compute stress by multiplying the distances with the graph theoretic distances, squaring it, multiplying by the weight factor and then taking the sum
-    stress_tot = np.sum(weights * ((eucl_dis - gtds) ** 2))
-    ns = 1 - (stress_tot / (np.shape(coords)[0] ** 2))
-
-    #print('ns' + str(round(time.time() - start, 2)))
-
-    #return ns, nr
-    return ns
 
 
 """
@@ -249,3 +373,47 @@ def compare_points(a_x, a_y, b_x, b_y, center_x, center_y):
     res = d1 > d2
 
     return res
+
+
+import shapely as sh
+import networkx as nx
+import numpy as np
+
+def test():
+    G = nx.complete_graph(4)
+    pos = nx.spring_layout(G)
+
+    coords = []
+    for i in pos:
+        coords.append(pos[i])
+
+    coords += abs(np.min(coords))
+    coords /= np.max(coords)
+
+    polys = []
+    edges = list(G.edges())
+
+    for i in range(len(edges)):
+        n1 = edges[i][0]
+        n2 = edges[i][1]
+        c1_1 = coords[n1]
+        #c1_2 = [pos[n1][0] + 1/100, pos[n1][1]]
+        c2_1 = coords[n2]
+        #c2_2 = [pos[n2][0] + 1/100, pos[n2][1]]
+        #polys.append(sh.Polygon((c1_1, c1_2, c2_2, c2_1)))
+        polys.append(sh.LineString((c1_1, c2_1)))
+
+    nodes = list(G.nodes)
+    polys_n = []
+    for i in range(len(nodes)):
+        polys_n.append(sh.Point(coords[i]).buffer(1/45))
+
+    fig, ax = plt.subplots()
+
+    for poly in polys_n:
+        xe, ye = poly.exterior.xy
+        ax.plot(xe, ye, color="blue")
+
+    for poly in polys:
+        ax.plot(*poly.xy)
+    return mpoly

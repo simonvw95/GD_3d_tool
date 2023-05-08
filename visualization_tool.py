@@ -26,7 +26,8 @@ import utils
 import constants
 #from visualizations.scatter_3d import Scatter3D
 #from visualizations.scatter_3d_gd import Scatter3D
-from visualizations.graph_3d import Scatter3D
+from visualizations.scatter_3d_gd_v2 import Scatter3D
+#from visualizations.graph_3d import Scatter3D
 from visualizations.scatter_2d import Scatter2D
 from visualizations.quality_sphere import QualitySphere
 from visualizations.parallel_bar_plot import parallelBarPlot

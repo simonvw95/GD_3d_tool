@@ -57,7 +57,7 @@ class Scatter3D(SyncedCameraViewWidget):
         self.parent = parent
         self.cmap = cmap
         self.iscategorical = iscategorical
-        self.opts['distance'] = 110
+        self.opts['distance'] = 150
         #self.setCameraPosition(distance=1.5)
 
         self.color = np.empty((len(edges), 4))
@@ -91,7 +91,7 @@ class Scatter3D(SyncedCameraViewWidget):
 
         sorted_indices_lines = self.sorted_indices()
 
-        self.line_item = CustomScatterItem(pos = self.lines[sorted_indices_lines], mode = "lines", color = self.color[sorted_indices_lines], width = 3, antialias = True)
+        self.line_item = CustomScatterItem(pos = self.lines[sorted_indices_lines], mode = "lines", color = self.color[sorted_indices_lines], width = 3)
         #self.line_item = gl.GLLinePlotItem(pos=self.lines, mode="lines", color=(0.5, 0.0, 1.0, 1.0), width=3)
         #self.line_item = gl.GLLinePlotItem(pos=self.lines[sorted_indices_lines], mode="lines", color=(0.5, 0.0, 1.0, 1.0), width=7, antialias=True, pxMode = True)
         self.line_item.setGLOptions('translucent')
@@ -118,8 +118,8 @@ class Scatter3D(SyncedCameraViewWidget):
         full = np.full((distances_lines.shape[0], 4), np.array([0.35, 0.35, 0.35, 0]))
         color_adjustment = np.multiply(full, -distances_lines[:, None])
 
-        self.line_item.setData(pos = self.lines[sorted_indices_lines], color = self.color[sorted_indices_lines] + color_adjustment[sorted_indices_lines])
-        #self.line_item.setData(pos = self.lines[sorted_indices_lines])
+        #self.line_item.setData(pos = self.lines[sorted_indices_lines], color = self.color[sorted_indices_lines] + color_adjustment[sorted_indices_lines])
+        self.line_item.setData(pos = self.lines[sorted_indices_lines])
 
     def sorted_indices(self):
         """

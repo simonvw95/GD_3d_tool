@@ -66,13 +66,14 @@ if __name__ == '__main__':
                 print('output_file: {0}'.format(output_file))
 
                 if n_components == 2:
-                    # take the maximum of the the maximum differences (max difference of x coordinates & max difference of y coordinates)
-                    scale_factor = max(np.max(p[:, 0]) - np.min(p[:, 0]), np.max(p[:, 1]) - np.min(p[:, 1]))
                     # take the smallest value seen
                     smallest_val = abs(min(np.min(p[:, 0]), np.min(p[:, 1])))
+                    # take the maximum of the the maximum differences (max difference of x coordinates & max difference of y coordinates)
+                    scale_factor = max(np.max(p[:, 0]) - np.min(p[:, 0]), np.max(p[:, 1]) - np.min(p[:, 1]))
                 else:
-                    scale_factor = max(np.max(p[:, 0]) - np.min(p[:, 0]), np.max(p[:, 1]) - np.min(p[:, 1]), np.max(p[:, 2]) - np.min(p[:, 2]))
                     smallest_val = abs(min(np.min(p[:, 0]), np.min(p[:, 1]), np.min(p[:, 2])))
+                    scale_factor = max(np.max(p[:, 0]) - np.min(p[:, 0]), np.max(p[:, 1]) - np.min(p[:, 1]),
+                                       np.max(p[:, 2]) - np.min(p[:, 2]))
 
                 # add the smallest value to the coordinates so it translates to coordinates >=0
                 p += smallest_val

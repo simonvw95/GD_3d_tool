@@ -177,14 +177,16 @@ class parallelBarPlot(pg.PlotWidget):
                 self.addItem(item)
 
     def scale_to_signal_range(self):
-        mins = np.min(self.views_metrics, axis=0).reshape(1, 4)
-        maxs = np.max(self.views_metrics, axis=0).reshape(1, 4)
-        scale = 1 / (maxs - mins)
-        self.normdata = mins, scale
-        self.views_metrics = self.views_metrics - mins # mins.reshape((4,1))
-        self.views_metrics = self.views_metrics * scale
+        # commented this out because currently testing if it's not better to do scaling immediately after computing the metrics
+
+        # mins = np.min(self.views_metrics, axis=0).reshape(1, 4)
+        # maxs = np.max(self.views_metrics, axis=0).reshape(1, 4)
+        # scale = 1 / (maxs - mins)
+        # self.normdata = mins, scale
+        # self.views_metrics = self.views_metrics - mins # mins.reshape((4,1))
+        # self.views_metrics = self.views_metrics * scale
         self.views_metrics = self.views_metrics.astype(float)
-        print()
+        #print()
 
     def draw_histograms(self):
         self.rect_reference = {}
@@ -251,9 +253,6 @@ class parallelBarPlot(pg.PlotWidget):
             rect.highlight()
             self.highlighted_rects.append(rect)
         for i, text in enumerate(self.metric_texts):
-            # testing
-            #if constants.metrics[i] == 'crossing_number':
-                # change metric values to normalize or inflate
             text.setText(F"{constants.metrics[i]}: {round(metric_values[i], 2)}")
 
     def on_rect_click(self, rect, percentage):

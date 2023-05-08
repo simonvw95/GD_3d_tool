@@ -73,7 +73,6 @@ class Scatter3D(SyncedCameraViewWidget):
         self.scatter_item = CustomScatterItem(pos=data[sorted_indices], size=7, color=self.color[sorted_indices],
                                               pxMode=True)
         self.scatter_item.setGLOptions('translucent')
-        print(data)
         self.addItem(self.scatter_item)
         self.update_order()
 
