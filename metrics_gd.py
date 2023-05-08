@@ -60,7 +60,7 @@ def crossing_res_and_crossings_metric(coords, gtds):
     # this calculation is used if you're looping over all edges twice, in our case we skip duplicate comparisons
     #cnt = cnt / (len(edges)**2)
 
-    cnt = cnt / (len(edges) * (len(edges) - 1) / 2)
+    cnt = 1 - (cnt / (len(edges) * (len(edges) - 1) / 2))
 
     #print('cr and cn ' + str(round(time.time() - start, 2)))
     return cross_res, cnt
@@ -100,7 +100,8 @@ def norm_stress_node_resolution_metric(coords, gtds, stress_alpha):
 
     #print('ns' + str(round(time.time() - start, 2)))
 
-    return ns, nr
+    #return ns, nr
+    return ns
 
 
 """
@@ -115,8 +116,6 @@ res:            float, the angular resolution
 
 
 def angular_resolution_metric(coords, gtds):
-
-    start = time.time()
 
     adj_matrix = copy.deepcopy(gtds)
     adj_matrix[adj_matrix > 1] = 0
