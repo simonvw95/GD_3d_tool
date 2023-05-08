@@ -88,10 +88,20 @@ if __name__ == '__main__':
 
                     metrics_views_list[i] = np.array(compute_metrics(views[i], gtds))
 
-            metrics_list.append((layout_name, n_components, ns, nr, ar, cr, cn, np.array(metrics_views_list)))
+            # normalization step: for each quality metric, the lowest seen value of all views is set to be the lowest point (0), then the highest
+            # seen value of all views is set to the highest point (1)
+            qm_idx = {0 : ns, 1 : ar, 2 : cr, 3 : cn}
+
+            for key, val in qm_idx.items():
+                temp_array = np.append(np.array(metrics_views_list)[:, key], val)
+                curr_min = np.min(temp_array)
+                scale_val = np.max(temp_array - curr_min)
+                metrics_views_list[:, key] = (metrics_views_list[:, key] - curr_min) / scale_val
+
+            metrics_list.append((layout_name, n_components, ns, ar, cr, cn, np.array(metrics_views_list)))
 
         df_metrics = pd.DataFrame.from_records(metrics_list)
-        df_metrics.columns = ['layout_technique', 'n_components', 'normalized_stress', 'node_resolution', 'angular_resolution', 'crossing_resolution', 'crossing_number', 'views_metrics']
+        df_metrics.columns = ['layout_technique', 'n_components', 'normalized_stress', 'angular_resolution', 'crossing_resolution', 'crossing_number', 'views_metrics']
         df_metrics.to_pickle(metrics_file)
 
         # pool.close()
