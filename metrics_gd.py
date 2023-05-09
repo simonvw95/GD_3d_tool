@@ -131,6 +131,109 @@ def node_resolution(coords, gtds, stress_alpha):
 
     return nr
 
+def node_node_occl(coords, gtds, diameter = 1/60)
+
+    adj_matrix = copy.deepcopy(gtds)
+    adj_matrix[adj_matrix > 1] = 0
+    graph = nx.from_numpy_array(adj_matrix)
+    graph = nx.convert_node_labels_to_integers(graph)
+
+    nodes = list(graph.nodes())
+
+    cnt = 0
+    node_poly = {}
+
+    for i in range(len(nodes)):
+        node_poly[nodes[i]] = sh.Point(coords[i]).buffer(diameter)
+        first_node = node_poly[nodes[i]]
+
+        for j in range(i, len(nodes)):
+            if j not in node_poly:
+                node_poly[j] = sh.Point(coords[j]).buffer(diameter)
+
+            second_node = node_poly[j]
+            if first_node.intersects(second_node):
+                cnt += 1
+
+    return 1 - (cnt / (len(node) * (len(nodes) - 1) / 2))
+
+
+def node_edge_occl(coords, gtds, diameter= 1/60)
+
+    adj_matrix = copy.deepcopy(gtds)
+    adj_matrix[adj_matrix > 1] = 0
+    graph = nx.from_numpy_array(adj_matrix)
+    graph = nx.convert_node_labels_to_integers(graph)
+
+    edges = list(graph.edges())
+
+    cnt = 0
+    max_comparison = 0
+    for i in range(len(nodes)):
+        node_poly = sh.Point(coords[i]).buffer(diameter)
+
+        for j in range(len(edges)):
+            if nodes[i] not in edges[j]:
+                max_comparison += 1
+                n1 = edges[j][0]
+                n2 = edges[j][1]
+
+                edge = sh.LineString(coords[n1], coords[n2])
+
+                if node_poly.intersects(edge):
+                    cnt += 1
+
+    return 1 - (cnt / max_comparison)
+
+
+def edge_edge_occlusion(coords, gtds):
+
+    curr_min_angle = 360
+
+    adj_matrix = copy.deepcopy(gtds)
+    adj_matrix[adj_matrix > 1] = 0
+    graph = nx.from_numpy_array(adj_matrix)
+    graph = nx.convert_node_labels_to_integers(graph)
+
+    edges = list(graph.edges())
+    cnt = 0
+    max_comparison = 0
+
+    # loop over all the edges
+    for i in range(len(edges)):
+        edge1 = edges[i]
+
+        # get the line of the first edge
+        c1 = [(coords[edge1[0]][0], coords[edge1[0]][1]), (coords[edge1[1]][0], coords[edge1[1]][1])]
+
+        # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
+        if c1[0] == c1[1]:
+            cnt += 1
+            max_comparison += 1
+            continue
+
+        slope1 = (c1[1][1] - c1[0][1]) / (c1[1][0] - c1[0][0])
+        first_line = sh.LineString(c1)
+
+        # loop over the other edges starting from i (duplicate crossings won't be counted then)
+        for j in range(i, len(edges)):
+            edge2 = edges[j]
+
+            c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
+            slope2 = (c2[1][1] - c2[0][1]) / (c2[1][0] - c2[0][0])
+
+            # change arbitrary value of 0.01?
+            if (slope2 - slope1) < 0.01
+
+                second_line = sh.LineString(c2)
+
+                # if there is an intersection increase the ocunt
+                if first_line.intersects(second_line):
+                    cnt += 1
+                    max_comparison += 1
+
+    return 1 - (cnt / max_comparison)
+
 """
 A simple function for computing the overall stress of the current layout
 
