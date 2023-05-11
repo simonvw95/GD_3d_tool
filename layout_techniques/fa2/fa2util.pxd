@@ -36,11 +36,10 @@ cdef class Edge:
                zDist = cython.double,
                distance2 = cython.double,
                factor = cython.double)
-cdef void linRepulsion(Node n1, Node n2, double coefficient=*)
+cdef void linRepulsion(Node n1, Node n2, int dim, double coefficient=*)
 
 @cython.locals(xDist = cython.double,
                yDist = cython.double,
-               zDist = cython.double,
                distance2 = cython.double,
                factor = cython.double)
 cdef void linRepulsion_region(Node n, Region r, double coefficient=*)
@@ -51,43 +50,42 @@ cdef void linRepulsion_region(Node n, Region r, double coefficient=*)
                zDist = cython.double,
                distance = cython.double,
                factor = cython.double)
-cdef void linGravity(Node n, double g)
+cdef void linGravity(Node n, double g, int dim)
 
 
 @cython.locals(xDist = cython.double,
                yDist = cython.double,
                zDist = cython.double,
                factor = cython.double)
-cdef void strongGravity(Node n, double g, double coefficient=*)
+cdef void strongGravity(Node n, double g, int dim, double coefficient=*)
 
 @cython.locals(xDist = cython.double,
                yDist = cython.double,
                zDist = cython.double,
                factor = cython.double)
-cpdef void linAttraction(Node n1, Node n2, double e, bint distributedAttraction, double coefficient=*)
+cpdef void linAttraction(Node n1, Node n2, double e, bint distributedAttraction, int dim, double coefficient=*)
 
 @cython.locals(i = cython.int,
                j = cython.int,
                n1 = Node,
                n2 = Node)
-cpdef void apply_repulsion(list nodes, double coefficient)
+cpdef void apply_repulsion(list nodes, int dim, double coefficient)
 
 @cython.locals(n = Node)
-cpdef void apply_gravity(list nodes, double gravity, double scalingRatio, bint useStrongGravity=*)
+cpdef void apply_gravity(list nodes, double gravity, double scalingRatio, int dim, bint useStrongGravity=*)
 
 @cython.locals(edge = Edge)
-cpdef void apply_attraction(list nodes, list edges, bint distributedAttraction, double coefficient, double edgeWeightInfluence)
+cpdef void apply_attraction(list nodes, list edges, bint distributedAttraction, double coefficient, double edgeWeightInfluence, int dim)
 
 cdef class Region:
     cdef public double mass
-    cdef public double massCenterX, massCenterY, massCenterZ
+    cdef public double massCenterX, massCenterY
     cdef public double size
     cdef public list nodes
     cdef public list subregions
 
     @cython.locals(massSumX = cython.double,
                    massSumY = cython.double,
-                   massSumZ = cython.double,
                    n = Node,
                    distance = cython.double)
     cdef void updateMassAndGeometry(self)
@@ -123,4 +121,4 @@ cdef class Region:
                maxRise = cython.double,
                factor = cython.double,
                values = dict)
-cpdef dict adjustSpeedAndApplyForces(list nodes, double speed, double speedEfficiency, double jitterTolerance)
+cpdef dict adjustSpeedAndApplyForces(list nodes, double speed, double speedEfficiency, double jitterTolerance, int dim)

@@ -20,6 +20,9 @@ for m in metrics_files:
 df_metrics = pd.concat(dfs)
 df_metrics.columns = columns
 df_metrics['dataset_name'] = datasets
-df_metrics = df_metrics.loc[:,['dataset_name', 'layout_technique', 'n_components', 'normalized_stress', 'angular_resolution', 'crossing_resolution', 'crossing_number', 'views_metrics']]
+
+qm_names = ['stress', 'crossing_resolution', 'angular_resolution', 'node-node_occlusion', 'node-edge_occlusion', 'crossing_number', 'edge-edge_occlusion']
+
+df_metrics = df_metrics.loc[:,['dataset_name', 'layout_technique', 'n_components'] + qm_names + ['views_metrics']]
 
 df_metrics.to_pickle(consolid_metrics_file)

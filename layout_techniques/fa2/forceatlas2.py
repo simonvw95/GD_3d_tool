@@ -154,7 +154,8 @@ class ForceAtlas2:
     def forceatlas2(self,
                     G,  # a graph in 2D numpy ndarray format (or) scipy sparse matrix format
                     pos=None,  # Array of initial positions
-                    iterations=100  # Number of times to iterate the main loop
+                    iterations=100,  # Number of times to iterate the main loop
+                    dim = 2     # number of dimensions, only 2 or 3 dimensions are supported
                     ):
         # Initializing, initAlgo()
         # ================================================================
@@ -187,10 +188,12 @@ class ForceAtlas2:
             for n in nodes:
                 n.old_dx = n.dx
                 n.old_dy = n.dy
-                n.old_dz = n.dz
                 n.dx = 0
                 n.dy = 0
-                n.dz = 0
+
+                if dim == 3:
+                    n.old_dz = n.dz
+                    n.dz = 0
 
             # Barnes Hut optimization
             if self.barnesHutOptimize:
@@ -205,23 +208,23 @@ class ForceAtlas2:
             if self.barnesHutOptimize:
                 rootRegion.applyForceOnNodes(nodes, self.barnesHutTheta, self.scalingRatio)
             else:
-                fa2util.apply_repulsion(nodes, self.scalingRatio)
+                fa2util.apply_repulsion(nodes, dim, self.scalingRatio)
             repulsion_timer.stop()
 
             # Gravitational forces
             gravity_timer.start()
-            fa2util.apply_gravity(nodes, self.gravity, scalingRatio=self.scalingRatio, useStrongGravity=self.strongGravityMode)
+            fa2util.apply_gravity(nodes, self.gravity, scalingRatio=self.scalingRatio, dim = dim, useStrongGravity=self.strongGravityMode)
             gravity_timer.stop()
 
             # If other forms of attraction were implemented they would be selected here.
             attraction_timer.start()
             fa2util.apply_attraction(nodes, edges, self.outboundAttractionDistribution, outboundAttCompensation,
-                                     self.edgeWeightInfluence)
+                                     self.edgeWeightInfluence, dim)
             attraction_timer.stop()
 
             # Adjust speeds and apply forces
             applyforces_timer.start()
-            values = fa2util.adjustSpeedAndApplyForces(nodes, speed, speedEfficiency, self.jitterTolerance)
+            values = fa2util.adjustSpeedAndApplyForces(nodes, speed, speedEfficiency, self.jitterTolerance, dim)
             speed = values['speed']
             speedEfficiency = values['speedEfficiency']
             applyforces_timer.stop()
@@ -234,9 +237,13 @@ class ForceAtlas2:
             attraction_timer.display()
             applyforces_timer.display()
         # ================================================================
-        return [(n.x, n.y, n.z) for n in nodes]
+        if dim == 2:
+            return [(n.x, n.y) for n in nodes]
+        elif dim == 3:
+            return [(n.x, n.y, n.z) for n in nodes]
 
-    def forceatlas2_networkx_layout(self, G, pos=None, iterations=100, weight_attr=None):
+    def forceatlas2_networkx_layout(self, G, pos=None, iterations=100, weight_attr=None, dim = 2):
+
         import networkx
         try:
             import cynetworkx
@@ -249,9 +256,10 @@ class ForceAtlas2:
         ), "Not a networkx graph"
         assert isinstance(pos, dict) or (pos is None), "pos must be specified as a dictionary, as in networkx"
         M = networkx.to_scipy_sparse_array(G, dtype='f', format='lil', weight=weight_attr)
+
         if pos is None:
-            l = self.forceatlas2(M, pos=None, iterations=iterations)
+            l = self.forceatlas2(M, pos=None, iterations=iterations, dim = dim)
         else:
             poslist = numpy.asarray([pos[i] for i in G.nodes()])
-            l = self.forceatlas2(M, pos=poslist, iterations=iterations)
+            l = self.forceatlas2(M, pos=poslist, iterations=iterations, dim = dim)
         return dict(zip(G.nodes(), l))

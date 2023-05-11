@@ -18,10 +18,10 @@ def pivot_mds(g, pivots = 5, weights = None, D = None, dim = 2):
             raise ValueError('"pivots" must be less than the number of nodes in the graph.')
             
     if D is None:
-        pivs = np.random.choice(list(g.nodes()), pivots, replace = False)
-
         D = nx.floyd_warshall_numpy(g)
-        D = D[:, pivs]
+
+    pivs = np.random.choice(list(g.nodes()), pivots, replace=False)
+    D = D[:, pivs]
 
     Dsq = D**2
     cmean = np.mean(Dsq, axis=0)

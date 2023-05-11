@@ -3,14 +3,14 @@ import os
 import numpy as np
 import pandas as pd
 
-metrics = ['normalized_stress', 'angular_resolution', 'crossing_resolution', 'crossing_number']
+metrics = ['stress', 'crossing_resolution', 'angular_resolution', 'node-node_occlusion', 'node-edge_occlusion', 'crossing_number', 'edge-edge_occlusion']
 samples = 1000
 hover_to_view = True #Toggle for switching views by either hovering over bars, or clicking on bars
 scale_to_signal_range = False #Toglle for zooming in histograms
 show_user_picked_viewpoints = False #Only works if evaluationdata is passed to the tool, (see evaluation_analysis.py)
 
 metrics_dir = 'metrics'
-output_dir = 'projections'
+output_dir = 'layouts'
 analysis_dir = 'analysis'
 user_mode = 'free' #options: ['free', 'eval_full', 'eval_half', 'image', 'evalimage']
 

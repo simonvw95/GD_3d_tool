@@ -70,7 +70,7 @@ def compute_views(proj_file, viewpoints, labels=None, display=False, manual_rota
             if display:
                 fig.canvas.draw()
                 fig.canvas.flush_events()
-                # To make sure we draw the scatterplot points in the same order as the 3D projection (which matters for labeled projections)
+                # To make sure we draw the scatterplot points in the same order as the 3D projection (which matters for labeled layouts)
                 # we need to sort them first by distance to the eye. Points closer to the eye get drawn on top of points further from the eye
                 eye = viewpoints[index] * 100
                 update_view(view_proj, view, cmap, df, eye, fig2)

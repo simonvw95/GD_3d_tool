@@ -14,22 +14,39 @@ from metrics_gd import *
 
 def compute_metrics(coords, gtds):
 
-    norm_stress, node_res = norm_stress_node_resolution_metric(coords, gtds, stress_alpha = 2)
-    angul_res = angular_resolution_metric(coords, gtds)
-    crossing_res, crossing_number = crossing_res_and_crossings_metric(coords, gtds)
+    # normalized stress
+    ns = norm_stress(coords, gtds, stress_alpha = 2)
+    # crossing resolution
+    cr = crossing_res(coords, gtds)
+    # angular resolution
+    ar = angular_resolution_metric(coords, gtds)
 
-    return norm_stress, node_res, angul_res, crossing_res, crossing_number
+    # occlusions
+    # node-node occlusion
+    nn = node_node_occl(coords, gtds)
+    # node-edge occlusion
+    ne = node_edge_occl(coords, gtds)
+    # edge-edge occlusion case 1: (simply crossing number)
+    cr = crossings_number(coords, gtds)
+    # edge-edge occlusion case 2: edges that are practically on top of each other (w.r.t. a certain margin)
+    ee = edge_edge_occlusion(coords, gtds)
+
+    # norm_stress, node_res = norm_stress_node_resolution_metric(coords, gtds, stress_alpha = 2)
+    # angul_res = angular_resolution_metric(coords, gtds)
+    # crossing_res, crossing_number = crossing_res_and_crossings_metric(coords, gtds)
+
+    return ns, cr, ar, nn, ne, cr, ee
 
 
 def parallel_metrics(coords, gtds, args):
 
     index, view = args
-    ns_v, nr_v, ar_v, cr_v, cn_v = compute_metrics(coords, gtds)
+    ns_v, cr_v, ar_v, nn_v, ne_v, cr_v, ee_v = compute_metrics(coords, gtds)
 
     if index % 10 == 0:
         print(f"Calculating approximately view: {index}")
 
-    return [index, ns_v, nr_v, ar_v, cr_v, cn_v]
+    return [index, ns_v, cr_v, ar_v, nn_v, ne_v, cr_v, ee_v]
 
 
 if __name__ == '__main__':
@@ -47,7 +64,9 @@ if __name__ == '__main__':
         graph = nx.from_pandas_edgelist(df, 'from', 'to', edge_attr='strength')
         graph = nx.convert_node_labels_to_integers(graph)
 
-        gtds = nx.floyd_warshall_numpy(graph)
+        gtds_file = 'data/{0}/{0}-gtds.csv'.format(dataset_name)
+        gtds = pd.read_csv(gtds_file, sep=';', header=0)
+        gtds = gtds.to_numpy()
 
         dataset = input_file.split('/')[1]
         layouts = glob(os.path.join(constants.output_dir, '{0}*.csv'.format(dataset_name)))
@@ -64,7 +83,7 @@ if __name__ == '__main__':
 
             df_layout = pd.read_csv(layout_file, sep = ';', header = 0).to_numpy()
 
-            ns, nr, ar, cr, cn = compute_metrics(df_layout, gtds)
+            ns, cr, ar, nn, ne, cr, ee = compute_metrics(df_layout, gtds)
 
             # repeat for all views of a 3D projection:
             metrics_views_list = []
@@ -90,7 +109,9 @@ if __name__ == '__main__':
 
             # normalization step: for each quality metric, the lowest seen value of all views is set to be the lowest point (0), then the highest
             # seen value of all views is set to the highest point (1)
-            qm_idx = {0 : ns, 1 : ar, 2 : cr, 3 : cn}
+            qms = [ns, cr, ar, nn, ne, cr, ee]
+            qm_names = ['stress', 'crossing_resolution', 'angular_resolution', 'node-node_occlusion', 'node-edge_occlusion', 'crossing_number', 'edge-edge_occlusion']
+            qm_idx = dict(zip(range(len(qms)), qms))
 
             for key, val in qm_idx.items():
                 temp_array = np.append(np.array(metrics_views_list)[:, key], val)
@@ -101,7 +122,7 @@ if __name__ == '__main__':
             metrics_list.append((layout_name, n_components, ns, ar, cr, cn, np.array(metrics_views_list)))
 
         df_metrics = pd.DataFrame.from_records(metrics_list)
-        df_metrics.columns = ['layout_technique', 'n_components', 'normalized_stress', 'angular_resolution', 'crossing_resolution', 'crossing_number', 'views_metrics']
+        df_metrics.columns = ['layout_technique', 'n_components'] + qm_names + ['views_metrics']
         df_metrics.to_pickle(metrics_file)
 
         # pool.close()

@@ -439,7 +439,7 @@ class Tool(pg.GraphicsWindow):
             consolid_metrics = os.path.join(constants.metrics_dir, 'metrics.pkl')
             data_frame = pd.read_pickle(consolid_metrics)
         else:
-            #scale equally all 30 projections
+            #scale equally all 30 layouts
             metrics_file = os.path.join(constants.metrics_dir, F'metrics_{self.dataset_name}.pkl')
             df = pd.read_pickle(metrics_file)
             data_frame = df.loc[df['layout_technique'] == self.projection_method]

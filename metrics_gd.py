@@ -186,7 +186,7 @@ def node_edge_occl(coords, gtds, diameter= 1/60)
     return 1 - (cnt / max_comparison)
 
 
-def edge_edge_occlusion(coords, gtds):
+def edge_edge_occlusion(coords, gtds, margin = 0.01):
 
     curr_min_angle = 360
 
@@ -222,8 +222,7 @@ def edge_edge_occlusion(coords, gtds):
             c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
             slope2 = (c2[1][1] - c2[0][1]) / (c2[1][0] - c2[0][0])
 
-            # change arbitrary value of 0.01?
-            if (slope2 - slope1) < 0.01
+            if (slope2 - slope1) < margin:
 
                 second_line = sh.LineString(c2)
 
@@ -476,47 +475,3 @@ def compare_points(a_x, a_y, b_x, b_y, center_x, center_y):
     res = d1 > d2
 
     return res
-
-
-import shapely as sh
-import networkx as nx
-import numpy as np
-
-def test():
-    G = nx.complete_graph(4)
-    pos = nx.spring_layout(G)
-
-    coords = []
-    for i in pos:
-        coords.append(pos[i])
-
-    coords += abs(np.min(coords))
-    coords /= np.max(coords)
-
-    polys = []
-    edges = list(G.edges())
-
-    for i in range(len(edges)):
-        n1 = edges[i][0]
-        n2 = edges[i][1]
-        c1_1 = coords[n1]
-        #c1_2 = [pos[n1][0] + 1/100, pos[n1][1]]
-        c2_1 = coords[n2]
-        #c2_2 = [pos[n2][0] + 1/100, pos[n2][1]]
-        #polys.append(sh.Polygon((c1_1, c1_2, c2_2, c2_1)))
-        polys.append(sh.LineString((c1_1, c2_1)))
-
-    nodes = list(G.nodes)
-    polys_n = []
-    for i in range(len(nodes)):
-        polys_n.append(sh.Point(coords[i]).buffer(1/45))
-
-    fig, ax = plt.subplots()
-
-    for poly in polys_n:
-        xe, ye = poly.exterior.xy
-        ax.plot(xe, ye, color="blue")
-
-    for poly in polys:
-        ax.plot(*poly.xy)
-    return mpoly

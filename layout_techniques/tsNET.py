@@ -7,10 +7,10 @@ from layout_techniques.pivot_mds import pivot_mds
 from layout_techniques.thesne import tsnet
 
 
-def tsNET(graph, star = False, dimensions = 2, perplexity = 40, learning_rate = 50):
+def tsNET(graph, star = False, dimensions = 2, perplexity = 40, learning_rate = 50, gtds = None, n = 500):
 
     # Global hyperparameters
-    n = 5000  # Maximum #iterations before giving up
+    n = n  # Maximum #iterations before giving up
     momentum = 0.5
     tolerance = 1e-7
     window_size = 40
@@ -30,10 +30,13 @@ def tsNET(graph, star = False, dimensions = 2, perplexity = 40, learning_rate = 
     Y_init = None
 
     if star:
-        Y_init = pivot_mds(g = graph, dim = dimensions)
+        Y_init = pivot_mds(g = graph, dim = dimensions, D = gtds)
 
     # Compute the shortest-path distance matrix.
-    X = nx.floyd_warshall_numpy(graph)
+    if gtds is None:
+        X = nx.floyd_warshall_numpy(graph)
+    else:
+        X = gtds
 
     # The actual optimization is done in the thesne module.
     Y = tsnet(

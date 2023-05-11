@@ -1,4 +1,4 @@
-
+cython==0.29.34
 keyboard==0.13.5
 matplotlib==3.5.2
 networkx==3.0
@@ -11,5 +11,6 @@ scikit_learn==1.1.1
 scipy==1.8.1
 shapely==2.0.1
 torch==2.0.0
+tqdm==4.65.0
 trimesh==3.12.5
 

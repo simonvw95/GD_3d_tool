@@ -1,7 +1,7 @@
 from layout_techniques.fa2 import forceatlas2 as fa2
+import numpy as np
 
-
-def run_fa2(G, pos = None, edge_weight = 0.0, max_iter = 2000):
+def run_fa2(G, pos = None, edge_weight = 0.0, max_iter = 2000, dim = 2, bh_optimize = False):
 
     fa2_obj = fa2.ForceAtlas2(
                             # Behavior alternatives
@@ -12,7 +12,7 @@ def run_fa2(G, pos = None, edge_weight = 0.0, max_iter = 2000):
 
                             # Performance
                             jitterTolerance = 1.0,  # Tolerance
-                            barnesHutOptimize = False, # IS IMPLEMENTED BUT DO NOT USE, MOST LIKELY BROKEN WITH SWITCH TO 3D DRAWING
+                            barnesHutOptimize = bh_optimize, # IS IMPLEMENTED BUT DO NOT USE, MOST LIKELY BROKEN WITH SWITCH TO 3D DRAWING
                             barnesHutTheta = 1.2,
                             multiThreaded = False,  # NOT IMPLEMENTED
 
@@ -23,15 +23,16 @@ def run_fa2(G, pos = None, edge_weight = 0.0, max_iter = 2000):
 
                             # Log
                             verbose = False)
+    if dim == 3:
+        assert (fa2_obj.barnesHutOptimize == False), "BarnesHutOptimize does not work with 3 dimensions"
 
-    coords = fa2_obj.forceatlas2_networkx_layout(G = G, pos = pos, iterations = max_iter)
+    fa2_pos = fa2_obj.forceatlas2_networkx_layout(G = G, pos = pos, iterations = max_iter, dim = dim)
 
     # convert the given dictionary to a n by 2 matrix
-    coords = np.zeros(shape=(len(pos.keys()), 3))
-    for i in pos:
-        coords[i][0] = pos[i][0]
-        coords[i][1] = pos[i][1]
-        coords[i][2] = pos[i][2]
+    coords = np.zeros(shape=(len(fa2_pos.keys()), dim))
+    for i in fa2_pos:
+        for j in range(dim):
+            coords[i][j] = fa2_pos[i][j]
 
     return coords
 
