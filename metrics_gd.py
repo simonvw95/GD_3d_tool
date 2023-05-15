@@ -5,6 +5,7 @@ import time
 
 import shapely as sh
 
+
 def crossing_res(coords, gtds):
 
     curr_min_angle = 360
@@ -22,12 +23,10 @@ def crossing_res(coords, gtds):
 
         # get the line of the first edge
         c1 = [(coords[edge1[0]][0], coords[edge1[0]][1]), (coords[edge1[1]][0], coords[edge1[1]][1])]
-
         # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
         if c1[0] == c1[1]:
             continue
 
-        slope1 = (c1[1][1] - c1[0][1]) / (c1[1][0] - c1[0][0])
         first_line = sh.LineString(c1)
 
         # loop over the other edges starting from i (duplicate crossings won't be counted then)
@@ -37,11 +36,27 @@ def crossing_res(coords, gtds):
             # only check if edges cross if they do not share a node
             if edge1[0] not in edge2 and edge1[1] not in edge2:
                 c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
+
+                # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
+                if c2[0] == c2[1]:
+                    continue
+
                 second_line = sh.LineString(c2)
 
                 # if there is an intersection increase the ocunt
                 if first_line.intersects(second_line):
-                    slope2 = (c2[1][1] - c2[0][1]) / (c2[1][0] - c2[0][0])
+                    x_diff_1 = (c1[1][0] - c1[0][0])
+                    y_diff_1 = (c1[1][1] - c1[0][1])
+                    x_diff_2 = (c2[1][1] - c2[0][1])
+                    y_diff_2 = (c2[1][0] - c2[0][0])
+
+                    # if we have a vertical line then slightly shift both lines
+                    if (x_diff_1 == 0) or (x_diff_2 == 0):
+                        x_diff_1 = 0.01
+                        x_diff_2 = 0.01
+
+                    slope1 = y_diff_1 / x_diff_1
+                    slope2 = y_diff_2 / x_diff_2
                     angle = abs((slope2 - slope1) / (1 + slope1 * slope2))
                     deg_angle = np.arctan(angle) * 180 / np.pi
 
@@ -54,6 +69,7 @@ def crossing_res(coords, gtds):
         cross_res = curr_min_angle / 90
 
     return cross_res
+
 
 def crossings_number(coords, gtds):
 
@@ -86,6 +102,9 @@ def crossings_number(coords, gtds):
             # only check if edges cross if they do not share a node
             if edge1[0] not in edge2 and edge1[1] not in edge2:
                 c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
+                # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
+                if c1[0] == c1[1]:
+                    continue
                 second_line = sh.LineString(c2)
 
                 # if there is an intersection increase the ocunt
@@ -97,7 +116,7 @@ def crossings_number(coords, gtds):
     return cnt
 
 
-def norm_stress(coords, gtds, stress_alpha):
+def norm_stress(coords, gtds, stress_alpha = 2):
 
     with np.errstate(divide = 'ignore'):
         # compute the weights and set the numbers that turned to infinity (the 0 on the diagonals) to 0
@@ -131,7 +150,8 @@ def node_resolution(coords, gtds, stress_alpha):
 
     return nr
 
-def node_node_occl(coords, gtds, diameter = 1/60)
+
+def node_node_occl(coords, gtds, diameter = 1/60):
 
     adj_matrix = copy.deepcopy(gtds)
     adj_matrix[adj_matrix > 1] = 0
@@ -155,10 +175,10 @@ def node_node_occl(coords, gtds, diameter = 1/60)
             if first_node.intersects(second_node):
                 cnt += 1
 
-    return 1 - (cnt / (len(node) * (len(nodes) - 1) / 2))
+    return 1 - (cnt / (len(nodes) * (len(nodes) - 1) / 2))
 
 
-def node_edge_occl(coords, gtds, diameter= 1/60)
+def node_edge_occl(coords, gtds, diameter= 1/60):
 
     adj_matrix = copy.deepcopy(gtds)
     adj_matrix[adj_matrix > 1] = 0
@@ -166,7 +186,7 @@ def node_edge_occl(coords, gtds, diameter= 1/60)
     graph = nx.convert_node_labels_to_integers(graph)
 
     edges = list(graph.edges())
-
+    nodes = list(graph.nodes())
     cnt = 0
     max_comparison = 0
     for i in range(len(nodes)):
@@ -178,7 +198,7 @@ def node_edge_occl(coords, gtds, diameter= 1/60)
                 n1 = edges[j][0]
                 n2 = edges[j][1]
 
-                edge = sh.LineString(coords[n1], coords[n2])
+                edge = sh.LineString([coords[n1], coords[n2]])
 
                 if node_poly.intersects(edge):
                     cnt += 1
@@ -187,8 +207,6 @@ def node_edge_occl(coords, gtds, diameter= 1/60)
 
 
 def edge_edge_occlusion(coords, gtds, margin = 0.01):
-
-    curr_min_angle = 360
 
     adj_matrix = copy.deepcopy(gtds)
     adj_matrix[adj_matrix > 1] = 0
@@ -212,7 +230,6 @@ def edge_edge_occlusion(coords, gtds, margin = 0.01):
             max_comparison += 1
             continue
 
-        slope1 = (c1[1][1] - c1[0][1]) / (c1[1][0] - c1[0][0])
         first_line = sh.LineString(c1)
 
         # loop over the other edges starting from i (duplicate crossings won't be counted then)
@@ -220,8 +237,23 @@ def edge_edge_occlusion(coords, gtds, margin = 0.01):
             edge2 = edges[j]
 
             c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
-            slope2 = (c2[1][1] - c2[0][1]) / (c2[1][0] - c2[0][0])
+            if c2[0] == c2[1]:
+                continue
 
+            x_diff_1 = (c1[1][0] - c1[0][0])
+            y_diff_1 = (c1[1][1] - c1[0][1])
+            x_diff_2 = (c2[1][1] - c2[0][1])
+            y_diff_2 = (c2[1][0] - c2[0][0])
+
+            # if we have a vertical line then slightly shift both lines
+            if (x_diff_1 == 0) or (x_diff_2 == 0):
+                x_diff_1 = 0.01
+                x_diff_2 = 0.01
+
+            slope1 = y_diff_1 / x_diff_1
+            slope2 = y_diff_2 / x_diff_2
+
+            max_comparison += 1
             if (slope2 - slope1) < margin:
 
                 second_line = sh.LineString(c2)
@@ -229,9 +261,9 @@ def edge_edge_occlusion(coords, gtds, margin = 0.01):
                 # if there is an intersection increase the ocunt
                 if first_line.intersects(second_line):
                     cnt += 1
-                    max_comparison += 1
 
     return 1 - (cnt / max_comparison)
+
 
 """
 A simple function for computing the overall stress of the current layout
@@ -247,7 +279,6 @@ stress_tot:     float, the current total number of stress
 def norm_stress_node_resolution_metric(coords, gtds, stress_alpha):
 
     start = time.time()
-
     with np.errstate(divide = 'ignore'):
         # compute the weights and set the numbers that turned to infinity (the 0 on the diagonals) to 0
         weights = np.array(gtds).astype(float) ** -stress_alpha
@@ -269,6 +300,7 @@ def norm_stress_node_resolution_metric(coords, gtds, stress_alpha):
 
     #return ns, nr
     return ns
+
 
 def crossing_res_and_crossings_metric(coords, gtds):
 
@@ -295,7 +327,7 @@ def crossing_res_and_crossings_metric(coords, gtds):
             continue
 
         slope1 = (c1[1][1] - c1[0][1]) / (c1[1][0] - c1[0][0])
-        first_line = LineString(c1)
+        first_line = sh.LineString(c1)
 
         # loop over the other edges starting from i (duplicate crossings won't be counted then)
         for j in range(i, len(edges)):
@@ -304,7 +336,7 @@ def crossing_res_and_crossings_metric(coords, gtds):
             # only check if edges cross if they do not share a node
             if edge1[0] not in edge2 and edge1[1] not in edge2:
                 c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
-                second_line = LineString(c2)
+                second_line = sh.LineString(c2)
 
                 # if there is an intersection increase the ocunt
                 if first_line.intersects(second_line):

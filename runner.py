@@ -13,15 +13,13 @@ from layout_techniques.fa2 import run_fa2
 
 import constants
 
-
-projection_names = {
-                    'A': ['SM', 'pivot_mds', 'FA2', 'tsNET', 'tsNETstar']
-                }
-
 # projection_names = {
-#                     'A': ['SM', 'pivot_mds', 'FA2']
+#                     'A': ['pivot_mds']
 #                 }
 
+projection_names = {
+                    'A': ['SM', 'pivot_mds', 'FA2']#, 'tsNET', 'tsNETstar']
+                }
 
 def get_projections(graph, n_components, gtds, technique = 'all'):
 
@@ -42,26 +40,18 @@ def get_projections(graph, n_components, gtds, technique = 'all'):
         bh_optimize = False
         if n_components == 2:
             bh_optimize = True
-        layouts['FA2'] = run_fa2.run_fa2(G = graph, pos = None, edge_weight = 0.0, max_iter = 100, dim = n_components, bh_optimize = bh_optimize)
+        layouts['FA2'] = run_fa2.run_fa2(G = graph, pos = None, edge_weight = 0.0, max_iter = 300, dim = n_components, bh_optimize = bh_optimize)
         print('FA2 took: ' + str(time.time() - start) + ' seconds')
 
     if technique == 'tsNET' or technique == 'all':
-        try:
-            start = time.time()
-            layouts['tsNET'] = tsNET(graph, star = False, dimensions = n_components, gtds = gtds, n = 500)
-            print('tsNET took: ' + str(time.time() - start) + ' seconds')
-        except Exception as e:
-            print(e)
-            pass
+        start = time.time()
+        layouts['tsNET'] = tsNET(graph, star = False, dimensions = n_components, gtds = gtds, n = 500)
+        print('tsNET took: ' + str(time.time() - start) + ' seconds')
 
     if technique == 'tsNETstar' or technique == 'all':
-        try:
-            start = time.time()
-            layouts['tsNETstar'] = tsNET(graph, star = True, dimensions = n_components, gtds = gtds, n = 500),
-            print('tsNETstar took: ' + str(time.time() - start) + ' seconds')
-        except Exception as e:
-            print(e)
-            pass
+        start = time.time()
+        layouts['tsNETstar'] = tsNET(graph, star = True, dimensions = n_components, gtds = gtds, n = 1),
+        print('tsNETstar took: ' + str(time.time() - start) + ' seconds')
 
     return layouts
 
@@ -79,7 +69,7 @@ def save_gtds(graph, dataset_name):
 if __name__ == '__main__':
 
     # manual
-    #all_dataset_names = ['gridaug']
+    #all_dataset_names = ['3elt']
     # automatic every dataset
     all_dataset_names = os.listdir('data/')
 
@@ -131,7 +121,6 @@ if __name__ == '__main__':
 
                     print('dim: {0}, proj: {1}'.format(n_components, proj_name))
                     print('output_file: {0}'.format(output_file))
-
                     if n_components == 2:
                         # take the smallest value seen
                         smallest_val = abs(min(np.min(p[:, 0]), np.min(p[:, 1])))

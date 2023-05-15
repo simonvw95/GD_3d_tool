@@ -17,7 +17,6 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QPushButton
 from pyqtgraph import mkPen
-from compute_metrics import compute_metrics
 import pyqtgraph.exporters
 
 from matplotlib import cm
@@ -35,7 +34,7 @@ from functools import partial
 
 
 class Tool(pg.GraphicsWindow):
-    def __init__(self, dataset_name="grid", projection_method="SM", analysis_data=None):
+    def __init__(self, dataset_name="grafo1126", projection_method="FA2", analysis_data=None):
         super(Tool, self).__init__()
 
         keyboard.on_press(self.keyboard_event)
