@@ -7,7 +7,7 @@ import networkx as nx
 import time
 
 from sklearn import manifold
-from layout_techniques.tsNET import tsNET
+from layout_techniques.tsnet_v2 import tsNET
 from layout_techniques.pivot_mds import pivot_mds
 from layout_techniques.fa2 import run_fa2
 
@@ -18,8 +18,11 @@ import constants
 #                 }
 
 projection_names = {
-                    'A': ['SM', 'pivot_mds', 'FA2']#, 'tsNET', 'tsNETstar']
+                    'A': ['SM', 'pivot_mds', 'FA2', 'tsNET', 'tsNETstar']
                 }
+
+# projection_names = {'A' : ['tsNET', 'tsNETstar']}
+
 
 def get_projections(graph, n_components, gtds, technique = 'all'):
 
@@ -32,7 +35,7 @@ def get_projections(graph, n_components, gtds, technique = 'all'):
 
     if technique == 'pivot_mds' or technique == 'all':
         start = time.time()
-        layouts['pivot_mds'] = pivot_mds(graph, dim = n_components, D = gtds)
+        layouts['pivot_mds'] = pivot_mds(graph, dim = n_components, D = gtds, pivots = int(graph.number_of_nodes() / 10))
         print('pivot_mds took: ' + str(time.time() - start) + ' seconds')
 
     if technique == 'FA2' or technique == 'all':
@@ -45,12 +48,12 @@ def get_projections(graph, n_components, gtds, technique = 'all'):
 
     if technique == 'tsNET' or technique == 'all':
         start = time.time()
-        layouts['tsNET'] = tsNET(graph, star = False, dimensions = n_components, gtds = gtds, n = 500)
+        layouts['tsNET'] = tsNET(graph, star = False, dimensions = n_components, gtds = gtds, n = 300, perplexity = 125)
         print('tsNET took: ' + str(time.time() - start) + ' seconds')
 
     if technique == 'tsNETstar' or technique == 'all':
         start = time.time()
-        layouts['tsNETstar'] = tsNET(graph, star = True, dimensions = n_components, gtds = gtds, n = 1),
+        layouts['tsNETstar'] = tsNET(graph, star = True, dimensions = n_components, gtds = gtds, n = 300, perplexity = 125),
         print('tsNETstar took: ' + str(time.time() - start) + ' seconds')
 
     return layouts
@@ -69,7 +72,7 @@ def save_gtds(graph, dataset_name):
 if __name__ == '__main__':
 
     # manual
-    #all_dataset_names = ['3elt']
+    #all_dataset_names = ['EVA']
     # automatic every dataset
     all_dataset_names = os.listdir('data/')
 
@@ -109,7 +112,7 @@ if __name__ == '__main__':
 
                 # if it doesnt exist
                 if not os.path.isfile(output_file) or overwrite:
-                    print('Doing ' + str(proj_name))
+                    print('Doing ' + str(proj_name) + ' in ' + str(n_components) + 'd')
                     projections = get_projections(graph, n_components, gtds, technique = proj_name)
 
                     if proj_name == 'SM':
@@ -117,10 +120,13 @@ if __name__ == '__main__':
                     else:
                         p = projections[proj_name]
 
-
-
                     print('dim: {0}, proj: {1}'.format(n_components, proj_name))
                     print('output_file: {0}'.format(output_file))
+
+                    # sometimes tsnet* does weird things with the shape
+                    if len(np.shape(p)) == 3:
+                        p = p[0]
+
                     if n_components == 2:
                         # take the smallest value seen
                         smallest_val = abs(min(np.min(p[:, 0]), np.min(p[:, 1])))

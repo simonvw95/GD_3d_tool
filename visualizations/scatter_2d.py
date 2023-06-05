@@ -33,13 +33,13 @@ class Scatter2D(pg.PlotWidget):
 
         #self.scatter_item.addPoints(pos=data, brush=colors)
         #self.addItem(self.scatter_item)
-
+        self.colors = pg.mkBrush(self.cmap(0, bytes=True))
         self.getViewBox().setLimits(xMin=-0.5, xMax=1.5, yMin=np.min(data[:, 1]) - padding, yMax=np.max(data[:, 1]) + padding)
         self.title = title
         self.label = QLabel(self.title, self.viewport())
 
         self.edges = edges
-        self.line_item = pg.GraphItem(size=5, pen=pg.mkPen(0,0,0,50), hoverable=True)
+        self.line_item = pg.GraphItem(pen=pg.mkPen('black', width=3), hoverable=True, pxMode = True, size = 8, brush = self.colors)
         self.line_item.setData(pos=data, adj=np.array(edges))
         self.addItem(self.line_item)
 

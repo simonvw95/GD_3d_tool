@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 
-metrics = ['stress', 'crossing_resolution', 'angular_resolution', 'node-node_occlusion', 'node-edge_occlusion', 'crossing_number', 'edge-edge_occlusion']
+metrics = ['stress', 'crossing_resolution', 'angular_resolution', 'node_resolution', 'node-node_occlusion', 'node-edge_occlusion', 'crossing_number', 'edge-edge_occlusion']
 samples = 1000
 hover_to_view = True #Toggle for switching views by either hovering over bars, or clicking on bars
 scale_to_signal_range = False #Toglle for zooming in histograms

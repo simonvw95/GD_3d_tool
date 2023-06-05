@@ -75,7 +75,7 @@ class QualitySphere(SyncedCameraViewWidget):
         self.mesh_item = CustomMeshItem(texture_1d, meshdata=self.md, smooth=True, shader='custom_shader', glOptions='translucent')
         self.addItem(self.mesh_item)
         if constants.show_user_picked_viewpoints:
-            data = parent.analysis_data.where((parent.analysis_data['projection_method'] == parent.projection_method) &
+            data = parent.analysis_data.where((parent.analysis_data['projection_method'] == parent.default_layout_technique) &
                                               (parent.analysis_data['dataset'] == parent.dataset_name))
             viewpoints_with_tool =  data.loc[data['mode'] == 'eval_full']['viewpoint'].to_numpy()
             viewpoints_with_tool = np.array([p for p in viewpoints_with_tool])

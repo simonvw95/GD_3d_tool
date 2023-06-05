@@ -130,6 +130,10 @@ class Scatter3D(SyncedCameraViewWidget):
         distances -= np.min(distances)
         distances /= np.max(distances)
         distances -= 1.0
+
+        # temp testing
+        distances *= 2
+
         sorted_indices = np.argsort(distances)
         full = np.full((distances.shape[0], 4), np.array([0.35, 0.35, 0.35, 0]))
         color_adjustment = np.multiply(full, -distances[:, None])

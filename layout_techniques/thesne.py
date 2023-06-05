@@ -30,6 +30,7 @@
 import networkx as nx
 import numpy as np
 import torch
+torch.autograd.set_detect_anomaly(True)
 from sklearn.utils import check_random_state
 import copy
 
@@ -61,6 +62,7 @@ def tsnet(X, perplexity=30, Y=None, output_dims=2, n_epochs=1000,
     sigma_shared = torch.tensor(np.ones(N),dtype=dtype)
     if Y is None:
         Y = random_state.normal(0, init_stdev, size=(N, output_dims))
+
     Y_shared = torch.tensor(np.asarray(Y),dtype=dtype,requires_grad=True)
 
 
@@ -169,6 +171,14 @@ def find_Y(X_shared, Y_shared, sigma_shared, N, output_dims, n_epochs,
 
         c = torch.sum(cost_var(X_shared,Y_shared,sigma_shared,l_kl_shared,l_c_shared,l_r_shared,r_eps))
         if np.isnan(float(c)):
+            print(c)
+            print(X_shared)
+            print(Y_shared)
+            print(sigma_shared)
+            print(l_kl_shared)
+            print(l_c_shared)
+            print(l_r_shared)
+            print(r_eps)
             raise NaNException('Encountered NaN for cost.')
 
         if verbose:

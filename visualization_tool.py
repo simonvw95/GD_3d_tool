@@ -9,13 +9,15 @@ import pandas as pd
 import pickle
 import keyboard
 import networkx as nx
+import copy
 
 import time
 
 import pyqtgraph as pg
 from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QPushButton, QSlider
 from pyqtgraph import mkPen
 import pyqtgraph.exporters
 
@@ -34,14 +36,14 @@ from functools import partial
 
 
 class Tool(pg.GraphicsWindow):
-    def __init__(self, dataset_name="grafo1126", projection_method="FA2", analysis_data=None):
+    def __init__(self, dataset_name="grafo1126", default_layout_technique="FA2", analysis_data=None):
         super(Tool, self).__init__()
 
         keyboard.on_press(self.keyboard_event)
 
         #Setup data
         self.dataset_name = dataset_name
-        self.projection_method = projection_method
+        self.default_layout_technique = default_layout_technique
         self.view_locked = False
 
         # Grid initialization
@@ -63,16 +65,16 @@ class Tool(pg.GraphicsWindow):
 
         if constants.user_mode != 'free':
             self.projection_index = 0
-            self.dataset_name, self.projection_method = constants.evaluation_set[self.projection_index]
+            self.dataset_name, self.default_layout_technique = constants.evaluation_set[self.projection_index]
             self.evaluation_data = []
         self.view_points = np.load(f'spheres/sphere{constants.samples}_points.npy')
-        self.D_P_dict = self.available_datasets_projections()
+        self.D_P_dict = self.available_datasets_layouts()
         self.current_metric = 'crossing_number'
         self.initialize_menu()
         self.scatter_2d = None
         self.scatter_3d = None
 
-        self.set_data(self.dataset_name, self.projection_method)
+        self.set_data(self.dataset_name, self.default_layout_technique)
 
         self.highlight()
 
@@ -85,7 +87,7 @@ class Tool(pg.GraphicsWindow):
         else:
             return None
 
-    def available_datasets_projections(self):
+    def available_datasets_layouts(self):
         consolid_metrics = os.path.join(constants.metrics_dir, 'metrics.pkl')
         data_frame = pd.read_pickle(consolid_metrics)
         D_P_dict = {}
@@ -116,16 +118,21 @@ class Tool(pg.GraphicsWindow):
             datasets = list(self.D_P_dict.keys())
             datasets.sort()
             self.dataset_picker = pg.ComboBox(items=datasets, default=self.dataset_name)
-            projections = list(self.D_P_dict[keys[0]])
-            projections.sort()
-            self.proj_technique_picker = pg.ComboBox(items=projections, default=self.projection_method)
+            layouts = list(self.D_P_dict[keys[0]])
+            layouts.sort()
+            self.layout_technique_picker = pg.ComboBox(items=layouts, default=self.default_layout_technique)
             self.dataset_picker.currentIndexChanged.connect(self.data_selected)
-            self.proj_technique_picker.currentIndexChanged.connect(self.data_selected)
+            self.layout_technique_picker.currentIndexChanged.connect(self.data_selected)
+
+            self.metric_picker = pg.ComboBox(items = constants.metrics, default = self.current_metric)
+            self.metric_picker.currentIndexChanged.connect(self.data_selected)
 
             self.menu.addLabel(text="Dataset:", row=len(self.menu.rows), col=0)
             self.menu.addWidget(self.dataset_picker, len(self.menu.rows), 0)
             self.menu.addLabel(text="Layout technique:", row=len(self.menu.rows), col=0)
-            self.menu.addWidget(self.proj_technique_picker, len(self.menu.rows), 0)
+            self.menu.addWidget(self.layout_technique_picker, len(self.menu.rows), 0)
+            self.menu.addLabel(text="Quality Metric:", row=len(self.menu.rows), col=0)
+            self.menu.addWidget(self.metric_picker, len(self.menu.rows), 0)
 
             self.dataset_picker.currentIndexChanged.connect(self.change_label_text)
 
@@ -133,6 +140,38 @@ class Tool(pg.GraphicsWindow):
             self.label_m = QtWidgets.QLabel('Number of edges (m): ' + str(self.G.number_of_edges()))
             self.menu.addWidget(self.label_n, row=len(self.menu.rows), col=0)
             self.menu.addWidget(self.label_m, row=len(self.menu.rows), col=0)
+
+            self.best_solution_button = QPushButton('Find best solution')
+            self.best_solution_button.pressed.connect(self.get_best_solution)
+            self.menu.addWidget(self.best_solution_button, len(self.menu.rows), 0)
+
+            # sliders for qms
+            self.n_metrics = len(constants.metrics)
+            # map the name of the metrics to the integer identifiers
+            self.metrics_name_dict = dict(zip(range(len(constants.metrics)), constants.metrics))
+
+            self.sliders = {}
+            self.sliders_labels = {}
+            self.weights = {}
+            # create sliders for the quality metrics
+            for i in range(self.n_metrics):
+
+                self.sliders_labels[i] = QtWidgets.QLabel(self.metrics_name_dict[i] + ' 1')
+                self.sliders_labels[i].setObjectName(str(i))
+                self.menu.addWidget(self.sliders_labels[i], len(self.menu.rows), 0)
+
+                self.weights[i] = 100
+                self.sliders[i] = QSlider(Qt.Horizontal)
+                self.sliders[i].setMinimum(0)
+                self.sliders[i].setMaximum(100)
+                self.sliders[i].setValue(100)
+                self.sliders[i].setSingleStep(5)
+                self.sliders[i].setTickInterval(10)
+                self.sliders[i].setTickPosition(QSlider.TicksBelow)
+                self.sliders[i].valueChanged.connect(self.update_weights)
+                self.sliders[i].setObjectName(str(i))
+                self.menu.addWidget(self.sliders[i], len(self.menu.rows), 0)
+
 
         else:
             self.evaluation_started = False #Keep track of when the tutorial is over
@@ -166,10 +205,13 @@ class Tool(pg.GraphicsWindow):
         self.menu.layout.setRowStretch(len(self.menu.rows), 1)
         self.layoutgb.addWidget(self.menu, 0, 0, 2, 1)
 
-    def change_label_text(self):
+    def update_weights(self, value):
+        sender = self.sender()
+        name = sender.objectName()
+        self.sliders_labels[int(name)].setText(self.metrics_name_dict[int(name)] + ' ' + str(round(value / 100, 2)))
+        self.weights[int(name)] = value
 
-        #self.label_n = QtWidgets.QLabel('Number of nodes (n): ' + str(self.G.number_of_nodes()))
-        #self.label_m = QtWidgets.QLabel('Number of edges (m): ' + str(self.G.number_of_edges()))
+    def change_label_text(self):
 
         self.label_n.setText('Number of nodes (n): ' + str(self.G.number_of_nodes()))
         self.label_m.setText('Number of edges (m): ' + str(self.G.number_of_edges()))
@@ -209,7 +251,7 @@ class Tool(pg.GraphicsWindow):
     def selected_view_count(self):
         count = 0
         for data in self.evaluation_data:
-            if data['dataset'] == self.dataset_name and data['projection_method'] == self.projection_method:
+            if data['dataset'] == self.dataset_name and data['layout_technique'] == self.default_layout_technique:
                 count += 1
         return count
 
@@ -223,7 +265,7 @@ class Tool(pg.GraphicsWindow):
         self.set_tool_lock(False)
         self.evaluation_data.append({
             'dataset': self.dataset_name,
-            'projection_method': self.projection_method,
+            'layout_technique': self.default_layout_technique,
             'viewpoint': np.array(self.scatter_3d.cameraPosition()),
             'view_quality': self.current_quality(),
             '2D_quality': self.metrics_2d,
@@ -249,8 +291,22 @@ class Tool(pg.GraphicsWindow):
         self.prefer_3d.setVisible(self.view_locked)
         self.prefer_2d.setVisible(self.view_locked)
 
+    # function for displaying the viewpoint with the best weighted solution
+    def get_best_solution(self):
+
+        curr_views_metrics = copy.deepcopy(self.views_metrics)
+        for i in range(self.n_metrics):
+            curr_views_metrics[:, i] *= (self.weights[i] / 100)
+
+
+        best_view = np.argmax(np.sum(curr_views_metrics, axis = 1))
+        view = self.view_points[best_view]
+
+        self.move_to_viewpoint(view)
+
+
     def initialize_3d_scatterplot(self):
-        proj_file_3d = F"{constants.output_dir}/{self.dataset_name}-{self.projection_method}-3d.csv"
+        proj_file_3d = F"{constants.output_dir}/{self.dataset_name}-{self.default_layout_technique}-3d.csv"
 
         input_file = glob('data/{0}/*-src.csv'.format(self.dataset_name))[0]
         df = pd.read_csv(input_file, sep=';', header=0)
@@ -281,7 +337,7 @@ class Tool(pg.GraphicsWindow):
         graph = nx.convert_node_labels_to_integers(graph)
         edges = list(graph.edges())
 
-        proj_file_2d = F"{constants.output_dir}/{self.dataset_name}-{self.projection_method}-2d.csv"
+        proj_file_2d = F"{constants.output_dir}/{self.dataset_name}-{self.default_layout_technique}-2d.csv"
         df_2d = pd.read_csv(proj_file_2d, sep=';').to_numpy()
         if self.scatter_2d is None:
             self.scatter_2d = Scatter2D(df_2d, self.labels, self.cmap, self.iscategorical, edges, title = "2D Layout")
@@ -332,6 +388,7 @@ class Tool(pg.GraphicsWindow):
     def initialize_histogram(self):
         self.hist = parallelBarPlot(self.views_metrics, self.metrics_2d, self.metrics_3d, self.view_points, parent=self)
         self.hist.setBackground('w')
+
         if constants.user_mode == 'evalimage':
             self.layoutgb.addWidget(self.hist, 0, 2, 2, 1)
         else:
@@ -368,7 +425,7 @@ class Tool(pg.GraphicsWindow):
         self.select_button.setDisabled(False)
         self.select_button.setText('Select view')
         for data in self.evaluation_data:
-            if data['dataset'] == self.dataset_name and data['projection_method'] == self.projection_method:
+            if data['dataset'] == self.dataset_name and data['layout_technique'] == self.default_layout_technique:
                 if self.angle(data['viewpoint'], self.scatter_3d.cameraPosition()) < 0.4:
                     self.select_button.setDisabled(True)
                     self.select_button.setText("Find a different viewpoint")
@@ -391,7 +448,7 @@ class Tool(pg.GraphicsWindow):
                 # Find the viewpoint for which me have metrics. that is closest to the current viewpoint
                 distances = np.sum((self.view_points - np.array(eye)) ** 2, axis=1)
                 nearest = np.argmin(distances)
-                df = pd.read_pickle(f"output/{self.dataset_name}-{self.projection_method}-views.pkl")
+                df = pd.read_pickle(f"layouts/{self.dataset_name}-{self.default_layout_technique}-views.pkl")
                 view = df['views'][nearest]
                 self.scatter_2d.set_data(view, self.labels)
 
@@ -415,8 +472,9 @@ class Tool(pg.GraphicsWindow):
 
     def data_selected(self):
         dataset_name = self.dataset_picker.value()
-        projection_method = self.proj_technique_picker.value()
+        projection_method = self.layout_technique_picker.value()
         self.set_data(dataset_name, projection_method)
+        self.metric_selected(self.metric_picker.value())
         pass
 
     def metric_selected(self, metric):
@@ -432,7 +490,7 @@ class Tool(pg.GraphicsWindow):
 
         metrics_file = os.path.join(constants.metrics_dir, F'metrics_{self.dataset_name}.pkl')
         df = pd.read_pickle(metrics_file)
-        select = df.loc[df['layout_technique'] == self.projection_method]
+        select = df.loc[df['layout_technique'] == self.default_layout_technique]
 
         if individual_scaling:
             consolid_metrics = os.path.join(constants.metrics_dir, 'metrics.pkl')
@@ -441,7 +499,7 @@ class Tool(pg.GraphicsWindow):
             #scale equally all 30 layouts
             metrics_file = os.path.join(constants.metrics_dir, F'metrics_{self.dataset_name}.pkl')
             df = pd.read_pickle(metrics_file)
-            data_frame = df.loc[df['layout_technique'] == self.projection_method]
+            data_frame = df.loc[df['layout_technique'] == self.default_layout_technique]
 
         views_metrics = data_frame['views_metrics'].values
         views_metrics = [l for l in views_metrics if len(l) > 0]
@@ -461,10 +519,10 @@ class Tool(pg.GraphicsWindow):
         Update the data of all the widgets inside the tool to a new dataset and projection technique combination
         """
         self.dataset_name = dataset_name
-        self.projection_method = projection_method
+        self.default_layout_technique = projection_method
         metrics_file = os.path.join(constants.metrics_dir, F'metrics_{self.dataset_name}.pkl')
         df = pd.read_pickle(metrics_file)
-        select = df.loc[df['layout_technique'] == self.projection_method]
+        select = df.loc[df['layout_technique'] == self.default_layout_technique]
 
         self.iscategorical = self.dataset_name in constants.categorical_datasets
         if self.iscategorical:
@@ -477,13 +535,16 @@ class Tool(pg.GraphicsWindow):
         self.views_metrics = select.iloc[1]['views_metrics']
         self.metrics_2d = select.iloc[0][constants.metrics].to_numpy()
         self.metrics_3d = select.iloc[1][constants.metrics].to_numpy()
-        mins, maxs = self.get_bounds()
+        self.n_metrics = np.shape(self.views_metrics)[1]
 
-        # commented out because this does not work at the moment
+        #mins, maxs = self.get_bounds()
+        # commented out because this does not work at the moment (probably to do with how Wouter computed his metrics)
         # self.views_metrics -= mins
-        self.views_metrics = (self.views_metrics - mins) / (maxs - mins)
-        self.metrics_2d = (self.metrics_2d - mins) / (maxs - mins)
-        self.metrics_3d = (self.metrics_3d - mins) / (maxs - mins)
+
+        # commented out as my metrics are already scaled between 0 and 1
+        # self.views_metrics = (self.views_metrics - mins) / (maxs - mins)
+        # self.metrics_2d = (self.metrics_2d - mins) / (maxs - mins)
+        # self.metrics_3d = (self.metrics_3d - mins) / (maxs - mins)
 
 
         self.labels = self.get_labels()
@@ -496,11 +557,12 @@ class Tool(pg.GraphicsWindow):
         self.highlight()
 
     def keyboard_event(self, event):
-        if event.event_type == 'down':
-            if event.name == '1':
-                vp = self.analysis_data['viewpoint'][0]
-                self.move_to_viewpoint(vp)
-                print('w')
+        pass
+        # if event.event_type == 'down':
+        #     if event.name == '1':
+        #         vp = self.analysis_data['viewpoint'][0]
+        #         self.move_to_viewpoint(vp)
+        #           print('w')
 
     def indices(self, di, pi):
         pi += 1
@@ -526,7 +588,7 @@ class Tool(pg.GraphicsWindow):
         #     f"{constants.analysis_dir}/{dataset}-{projection}-sphere2.png"))
     def save_images(self, tuple):
         di, pi = tuple
-        configs = self.available_datasets_projections()
+        configs = self.available_datasets_layouts()
         dataset = list(configs.keys())[di]
         projection = list(configs[dataset])[pi]
         QtCore.QTimer.singleShot(100, lambda: self.set_data(dataset, projection))
@@ -535,11 +597,11 @@ class Tool(pg.GraphicsWindow):
 
     def get_boxplot_data(self):
         data_with_tools = self.analysis_data[(self.analysis_data['dataset'] == self.dataset_name) &
-                                  (self.analysis_data['projection_method'] == self.projection_method) &
-                                  (self.analysis_data['mode'] == 'eval_full')]
+                                             (self.analysis_data['projection_method'] == self.default_layout_technique) &
+                                             (self.analysis_data['mode'] == 'eval_full')]
         data_without_tools = self.analysis_data[(self.analysis_data['dataset'] == self.dataset_name) &
-                                             (self.analysis_data['projection_method'] == self.projection_method) &
-                                             (self.analysis_data['mode'] == 'eval_half')]
+                                                (self.analysis_data['projection_method'] == self.default_layout_technique) &
+                                                (self.analysis_data['mode'] == 'eval_half')]
         qualities_with_tools = np.array([l for l in data_with_tools['view_quality']])
         data_without_tools = np.array([l for l in data_without_tools['view_quality']])
         box_plot_data = []
@@ -565,8 +627,8 @@ class Tool(pg.GraphicsWindow):
         Return a list of all viewpoint sets from the evaluation data.
         Order: Guided 2D preference, Guided 3D preference, Blind 2D preference, Blind 3D preference
         """
-        data = self.analysis_data.where((self.analysis_data['projection_method'] == self.projection_method) &
-                                          (self.analysis_data['dataset'] == self.dataset_name))
+        data = self.analysis_data.where((self.analysis_data['projection_method'] == self.default_layout_technique) &
+                                        (self.analysis_data['dataset'] == self.dataset_name))
         viewpoints = []
         for mode in ['eval_full', 'eval_half']:
             for preference in ['2D', '3D']:
