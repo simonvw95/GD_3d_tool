@@ -193,10 +193,10 @@ if __name__ == '__main__':
                 # first for 2d
                 df_layout = pd.read_csv(techniques[tech]['path'].replace('-3d.csv', '-2d.csv'), sep = ';', header = 0).to_numpy()
 
-                r = 1 / np.sqrt(graph.number_of_nodes())
+                r = min(1 / np.sqrt(graph.number_of_nodes()), 1/100)
                 width = r / 5
 
-                ns, cr, ar, nr, nn, ne, cn, ee = compute_metrics(df_layout, gtds, r, width)
+                ns, cr, ar, nr, nn, ne, cn, ee = compute_metrics_old(df_layout, gtds, r, width)
 
                 print('file: {0}, dim: {1}, technique: {2}'.format(layout_file, techniques[tech]['dim'], tech_name))
 
@@ -209,7 +209,7 @@ if __name__ == '__main__':
                 pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
                 start_parallel = time.time()
                 try:
-                    parallel_metrics_with_gtds = partial(parallel_metrics, gtds=gtds, r = r, width = width)
+                    parallel_metrics_with_gtds = partial(parallel_metrics_old, gtds=gtds, r = r, width = width)
                     res_iter = pool.map(parallel_metrics_with_gtds, [view for view in views])
                 except Exception as e:
                     pool.close()
@@ -253,4 +253,4 @@ if __name__ == '__main__':
                 df_metrics.columns = ['layout_technique', 'n_components'] + qm_names + ['views_metrics']
                 df_metrics.to_pickle(metrics_file)
 
-                print('Total time taken for current graph: ' + str(round(tot_time, 2)))
+            print('Total time taken for current graph: ' + str(round(tot_time, 2)))

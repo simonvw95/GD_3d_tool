@@ -7,7 +7,6 @@ import shapely as sh
 
 
 def crossing_res(coords, gtds):
-
     curr_min_angle = 360
 
     adj_matrix = copy.deepcopy(gtds)
@@ -16,52 +15,42 @@ def crossing_res(coords, gtds):
     graph = nx.convert_node_labels_to_integers(graph)
 
     edges = list(graph.edges())
+    m = len(edges)
+
+    polys = [0] * m
 
     # loop over all the edges
-    for i in range(len(edges)):
+    for i in range(m):
         edge1 = edges[i]
-
         # get the line of the first edge
         c1 = [(coords[edge1[0]][0], coords[edge1[0]][1]), (coords[edge1[1]][0], coords[edge1[1]][1])]
-        # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
-        if c1[0] == c1[1]:
-            continue
+        polys[i] = sh.LineString(c1)
 
-        first_line = sh.LineString(c1)
+    s = sh.STRtree(polys)
 
-        # loop over the other edges starting from i (duplicate crossings won't be counted then)
-        for j in range(i, len(edges)):
-            edge2 = edges[j]
+    for i in polys:
+        i_coords = i.xy
+        res = s.query(i, predicate='crosses')
+        for j in res:
+            j_coords = polys[j].xy
 
-            # only check if edges cross if they do not share a node
-            if edge1[0] not in edge2 and edge1[1] not in edge2:
-                c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
+            x_diff_1 = (i_coords[1][0] - i_coords[0][0])
+            y_diff_1 = (i_coords[1][1] - i_coords[0][1])
+            x_diff_2 = (j_coords[1][1] - j_coords[0][1])
+            y_diff_2 = (j_coords[1][0] - j_coords[0][0])
 
-                # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
-                if c2[0] == c2[1]:
-                    continue
+            # if we have a vertical line then slightly shift both lines
+            if (x_diff_1 == 0) or (x_diff_2 == 0):
+                x_diff_1 = 0.01
+                x_diff_2 = 0.01
 
-                second_line = sh.LineString(c2)
+            slope1 = y_diff_1 / x_diff_1
+            slope2 = y_diff_2 / x_diff_2
+            angle = abs((slope2 - slope1) / (1 + slope1 * slope2))
+            deg_angle = np.arctan(angle) * 180 / np.pi
 
-                # if there is an intersection increase the ocunt
-                if first_line.intersects(second_line):
-                    x_diff_1 = (c1[1][0] - c1[0][0])
-                    y_diff_1 = (c1[1][1] - c1[0][1])
-                    x_diff_2 = (c2[1][1] - c2[0][1])
-                    y_diff_2 = (c2[1][0] - c2[0][0])
-
-                    # if we have a vertical line then slightly shift both lines
-                    if (x_diff_1 == 0) or (x_diff_2 == 0):
-                        x_diff_1 = 0.01
-                        x_diff_2 = 0.01
-
-                    slope1 = y_diff_1 / x_diff_1
-                    slope2 = y_diff_2 / x_diff_2
-                    angle = abs((slope2 - slope1) / (1 + slope1 * slope2))
-                    deg_angle = np.arctan(angle) * 180 / np.pi
-
-                    if deg_angle < curr_min_angle:
-                        curr_min_angle = deg_angle
+            if deg_angle < curr_min_angle:
+                curr_min_angle = deg_angle
 
     if curr_min_angle == 360:
         cross_res = 1
@@ -69,6 +58,71 @@ def crossing_res(coords, gtds):
         cross_res = curr_min_angle / 90
 
     return cross_res
+
+#
+# def crossing_res(coords, gtds):
+#
+#     curr_min_angle = 360
+#
+#     adj_matrix = copy.deepcopy(gtds)
+#     adj_matrix[adj_matrix > 1] = 0
+#     graph = nx.from_numpy_array(adj_matrix)
+#     graph = nx.convert_node_labels_to_integers(graph)
+#
+#     edges = list(graph.edges())
+#
+#     # loop over all the edges
+#     for i in range(len(edges)):
+#         edge1 = edges[i]
+#
+#         # get the line of the first edge
+#         c1 = [(coords[edge1[0]][0], coords[edge1[0]][1]), (coords[edge1[1]][0], coords[edge1[1]][1])]
+#         # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
+#         if c1[0] == c1[1]:
+#             continue
+#
+#         first_line = sh.LineString(c1)
+#
+#         # loop over the other edges starting from i (duplicate crossings won't be counted then)
+#         for j in range(i+1, len(edges)):
+#             edge2 = edges[j]
+#
+#             # only check if edges cross if they do not share a node
+#             if edge1[0] not in edge2 and edge1[1] not in edge2:
+#                 c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
+#
+#                 # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
+#                 if c2[0] == c2[1]:
+#                     continue
+#
+#                 second_line = sh.LineString(c2)
+#
+#                 # if there is an intersection increase the ocunt
+#                 if first_line.intersects(second_line):
+#                     x_diff_1 = (c1[1][0] - c1[0][0])
+#                     y_diff_1 = (c1[1][1] - c1[0][1])
+#                     x_diff_2 = (c2[1][1] - c2[0][1])
+#                     y_diff_2 = (c2[1][0] - c2[0][0])
+#
+#                     # if we have a vertical line then slightly shift both lines
+#                     if (x_diff_1 == 0) or (x_diff_2 == 0):
+#                         x_diff_1 = 0.01
+#                         x_diff_2 = 0.01
+#
+#                     slope1 = y_diff_1 / x_diff_1
+#                     slope2 = y_diff_2 / x_diff_2
+#                     angle = abs((slope2 - slope1) / (1 + slope1 * slope2))
+#                     deg_angle = np.arctan(angle) * 180 / np.pi
+#
+#                     if deg_angle < curr_min_angle:
+#                         curr_min_angle = deg_angle
+#
+#     if curr_min_angle == 360:
+#         cross_res = 1
+#     else:
+#         cross_res = curr_min_angle / 90
+#
+#     return cross_res
 
 
 def crossings_number(coords, gtds):
@@ -81,39 +135,68 @@ def crossings_number(coords, gtds):
     graph = nx.convert_node_labels_to_integers(graph)
 
     edges = list(graph.edges())
+    m = len(edges)
+    polys = [0] * m
 
     # loop over all the edges
-    for i in range(len(edges)):
+    for i in range(m):
         edge1 = edges[i]
-
         # get the line of the first edge
         c1 = [(coords[edge1[0]][0], coords[edge1[0]][1]), (coords[edge1[1]][0], coords[edge1[1]][1])]
+        polys[i] = sh.LineString(c1)
 
-        # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
-        if c1[0] == c1[1]:
-            continue
+    s = sh.STRtree(polys)
 
-        first_line = sh.LineString(c1)
+    for i in polys:
+        res = s.query(i, predicate = 'crosses')
+        cnt += len(res)
 
-        # loop over the other edges starting from i (duplicate crossings won't be counted then)
-        for j in range(i, len(edges)):
-            edge2 = edges[j]
+    return 1 - (cnt / (m**2))
 
-            # only check if edges cross if they do not share a node
-            if edge1[0] not in edge2 and edge1[1] not in edge2:
-                c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
-                # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
-                if c1[0] == c1[1]:
-                    continue
-                second_line = sh.LineString(c2)
 
-                # if there is an intersection increase the ocunt
-                if first_line.intersects(second_line):
-                    cnt += 1
-
-    cnt = 1 - (cnt / (len(edges) * (len(edges) - 1) / 2))
-
-    return cnt
+# def crossings_number(coords, gtds):
+#
+#     cnt = 0
+#
+#     adj_matrix = copy.deepcopy(gtds)
+#     adj_matrix[adj_matrix > 1] = 0
+#     graph = nx.from_numpy_array(adj_matrix)
+#     graph = nx.convert_node_labels_to_integers(graph)
+#
+#     edges = list(graph.edges())
+#
+#     # loop over all the edges
+#     for i in range(len(edges)):
+#         edge1 = edges[i]
+#
+#         # get the line of the first edge
+#         c1 = [(coords[edge1[0]][0], coords[edge1[0]][1]), (coords[edge1[1]][0], coords[edge1[1]][1])]
+#
+#         # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
+#         if c1[0] == c1[1]:
+#             continue
+#
+#         first_line = sh.LineString(c1)
+#
+#         # loop over the other edges starting from i (duplicate crossings won't be counted then)
+#         for j in range(i+1, len(edges)):
+#             edge2 = edges[j]
+#
+#             # only check if edges cross if they do not share a node
+#             if edge1[0] not in edge2 and edge1[1] not in edge2:
+#                 c2 = [(coords[edge2[0]][0], coords[edge2[0]][1]), (coords[edge2[1]][0], coords[edge2[1]][1])]
+#                 # it can happen that the layout algorithm puts two nodes on the EXACT same position, we simply continue with the next edge
+#                 if c1[0] == c1[1]:
+#                     continue
+#                 second_line = sh.LineString(c2)
+#
+#                 # if there is an intersection increase the ocunt
+#                 if first_line.intersects(second_line):
+#                     cnt += 1
+#
+#     cnt = 1 - (cnt / (len(edges) * (len(edges) - 1) / 2))
+#
+#     return cnt
 
 
 def norm_stress_node_resolution(coords, gtds, tar_res, stress_alpha = 2):
@@ -216,6 +299,7 @@ def node_node_occl(coords, r = 0.01):
 
     return 1 - nn
 
+
 def node_edge_occl(coords, gtds, r, width):
 
     adj_matrix = copy.deepcopy(gtds)
@@ -250,29 +334,86 @@ def node_edge_occl(coords, gtds, r, width):
     bottom_lefts = (np.array([x1s, y1s]) + offsets + r_off).T
     bottom_rights = (np.array([x2s, y2s]) + offsets - r_off).T
 
-    node_dict = {}
-    rect_dict = {}
     areas = 0
 
+    node_polys = [0] * n
+    edge_polys = [0] * m
     # compare each node with each other edge
     for i in range(n):
-        cur_n = nodes[i]
-        if cur_n not in node_dict:
-            # construct a circle
-            node_dict[cur_n] = sh.Point(coords[i]).buffer(r)
+        node_polys[i] = sh.Point(coords[i]).buffer(r)
 
-        for j in range(m):
-            cur_e = tuple(edges[j])
-            if cur_e not in rect_dict:
-                rect_dict[cur_e] = sh.Polygon(np.vstack([top_lefts[j], top_rights[j], bottom_rights[j], bottom_lefts[j]]))
+    for i in range(m):
+        edge_polys[i] = sh.Polygon(np.vstack([top_lefts[i], top_rights[i], bottom_rights[i], bottom_lefts[i]]))
 
-            # if the circle and rectangle intersect then get the intersection area %
-            if node_dict[cur_n].intersects(rect_dict[cur_e]):
-                areas += node_dict[cur_n].intersection(rect_dict[cur_e]).area / (node_dict[cur_n].area + rect_dict[cur_e].area)
+    s = sh.STRtree(edge_polys)
+
+    for i in node_polys:
+        res = s.query(i, predicate='intersects')
+        for j in res:
+            areas += i.intersection(edge_polys[j]).area / (i.area + edge_polys[j].area)
 
     ne = 1 - (areas / (n * m))
 
     return ne
+
+#
+# def node_edge_occl(coords, gtds, r, width):
+#
+#     adj_matrix = copy.deepcopy(gtds)
+#     adj_matrix[adj_matrix > 1] = 0
+#     graph = nx.from_numpy_array(adj_matrix)
+#     graph = nx.convert_node_labels_to_integers(graph)
+#
+#     edges = list(graph.edges())
+#     m = len(edges)
+#     nodes = list(graph.nodes())
+#     n = len(nodes)
+#
+#     edges = np.array(edges)
+#     # get the y and x coordinates of the edges in their separate arrays
+#     y2s = coords[edges[:,1]][:,1]
+#     y1s = coords[edges[:,0]][:,1]
+#     x2s = coords[edges[:,1]][:,0]
+#     x1s = coords[edges[:,0]][:,0]
+#     # get the angles
+#     angles = np.arctan2(y2s - y1s, x2s - x1s)
+#
+#     half_width = width / 2
+#
+#     # calculate the offset for the corners
+#     offsets = half_width * np.array([-np.sin(angles), np.cos(angles)])
+#
+#     r_off = r * np.array([np.cos(angles), np.sin(angles)])
+#
+#     # find the corner points
+#     top_lefts = (np.array([x1s, y1s]) - offsets + r_off).T
+#     top_rights = (np.array([x2s, y2s]) - offsets - r_off).T
+#     bottom_lefts = (np.array([x1s, y1s]) + offsets + r_off).T
+#     bottom_rights = (np.array([x2s, y2s]) + offsets - r_off).T
+#
+#     node_dict = {}
+#     rect_dict = {}
+#     areas = 0
+#
+#     # compare each node with each other edge
+#     for i in range(n):
+#         cur_n = nodes[i]
+#         if cur_n not in node_dict:
+#             # construct a circle
+#             node_dict[cur_n] = sh.Point(coords[i]).buffer(r)
+#
+#         for j in range(m):
+#             cur_e = tuple(edges[j])
+#             if cur_e not in rect_dict:
+#                 rect_dict[cur_e] = sh.Polygon(np.vstack([top_lefts[j], top_rights[j], bottom_rights[j], bottom_lefts[j]]))
+#
+#             # if the circle and rectangle intersect then get the intersection area %
+#             if node_dict[cur_n].intersects(rect_dict[cur_e]):
+#                 areas += node_dict[cur_n].intersection(rect_dict[cur_e]).area / (node_dict[cur_n].area + rect_dict[cur_e].area)
+#
+#     ne = 1 - (areas / (n * m))
+#
+#     return ne
 
 
 def edge_edge_occl_crossing_number_crossing_res(coords, gtds, r, width):
@@ -405,28 +546,83 @@ def edge_edge_occl(coords, gtds, r, width):
     bottom_lefts = (np.array([x1s, y1s]) + offsets + r_off).T
     bottom_rights = (np.array([x2s, y2s]) + offsets - r_off).T
 
-    rect_dict = {}
+    rect_poly = [0] * m
     areas = 0
 
     # compare each edge with each other edge
     for i in range(m):
-        cur_e = tuple(edges[i])
-        if cur_e not in rect_dict:
-            # construct a rectangle
-            rect_dict[cur_e] = sh.Polygon(np.vstack([top_lefts[i], top_rights[i], bottom_rights[i], bottom_lefts[i]]))
+        rect_poly[i] = sh.Polygon(np.vstack([top_lefts[i], top_rights[i], bottom_rights[i], bottom_lefts[i]]))
 
-        for j in range(i + 1, m):
-            cur_e_2 = tuple(edges[j])
-            if cur_e_2 not in rect_dict:
-                rect_dict[cur_e_2] = sh.Polygon(np.vstack([top_lefts[j], top_rights[j], bottom_rights[j], bottom_lefts[j]]))
+    s = sh.STRtree(rect_poly)
 
-            # if the rectangles intersect then get the intersection area %
-            if rect_dict[cur_e].intersects(rect_dict[cur_e_2]):
-                areas += rect_dict[cur_e].intersection(rect_dict[cur_e_2]).area / rect_dict[cur_e].area
+    for i in rect_poly:
+        res = s.query(i, predicate='intersects')
+        for j in res:
+            areas += i.intersection(rect_poly[j]).area / (i.area + rect_poly[j].area)
+
+    ne = 1 - (areas / (m**2))
+
+    return ne
 
     ee = 1 - (areas / (m * (m - 1) / 2))
 
     return ee
+
+
+# def edge_edge_occl(coords, gtds, r, width):
+#
+#     adj_matrix = copy.deepcopy(gtds)
+#     adj_matrix[adj_matrix > 1] = 0
+#     graph = nx.from_numpy_array(adj_matrix)
+#     graph = nx.convert_node_labels_to_integers(graph)
+#
+#     edges = list(graph.edges())
+#     m = len(edges)
+#
+#     edges = np.array(edges)
+#     # get the y and x coordinates of the edges in their separate arrays
+#     # subtract
+#     y2s = coords[edges[:,1]][:,1]
+#     y1s = coords[edges[:,0]][:,1]
+#     x2s = coords[edges[:,1]][:,0]
+#     x1s = coords[edges[:,0]][:,0]
+#     angles = np.arctan2(y2s - y1s, x2s - x1s)
+#
+#     half_width = width / 2
+#
+#     # Step 4: Calculate the offset for the corners
+#     offsets = half_width * np.array([-np.sin(angles), np.cos(angles)])
+#
+#     r_off = r * np.array([np.cos(angles), np.sin(angles)])
+#
+#     # Step 5: Find the corner points
+#     top_lefts = (np.array([x1s, y1s]) - offsets + r_off).T
+#     top_rights = (np.array([x2s, y2s]) - offsets - r_off).T
+#     bottom_lefts = (np.array([x1s, y1s]) + offsets + r_off).T
+#     bottom_rights = (np.array([x2s, y2s]) + offsets - r_off).T
+#
+#     rect_dict = {}
+#     areas = 0
+#
+#     # compare each edge with each other edge
+#     for i in range(m):
+#         cur_e = tuple(edges[i])
+#         if cur_e not in rect_dict:
+#             # construct a rectangle
+#             rect_dict[cur_e] = sh.Polygon(np.vstack([top_lefts[i], top_rights[i], bottom_rights[i], bottom_lefts[i]]))
+#
+#         for j in range(i + 1, m):
+#             cur_e_2 = tuple(edges[j])
+#             if cur_e_2 not in rect_dict:
+#                 rect_dict[cur_e_2] = sh.Polygon(np.vstack([top_lefts[j], top_rights[j], bottom_rights[j], bottom_lefts[j]]))
+#
+#             # if the rectangles intersect then get the intersection area %
+#             if rect_dict[cur_e].intersects(rect_dict[cur_e_2]):
+#                 areas += rect_dict[cur_e].intersection(rect_dict[cur_e_2]).area / rect_dict[cur_e].area
+#
+#     ee = 1 - (areas / (m * (m - 1) / 2))
+#
+#     return ee
 
 
 def node_edge_edge_occl_matrix(coords, gtds, r, width):
@@ -553,6 +749,7 @@ def angular_resolution(coords, gtds):
             norm_sub = np.subtract(coords[order_neighbs, ].copy(), coords[nodes[i], ])
             sub_phi = np.arctan2(norm_sub[:, 1:2], norm_sub[:, :1]) * 180 / np.pi
 
+            total = 360
             # now compare each consecutive edge pair to get the smallest seen angle
             while len(sub_phi) >= 2:
                 first = sub_phi[0]
@@ -567,8 +764,13 @@ def angular_resolution(coords, gtds):
 
                 if angle < angle_res:
                     angle_res = angle
+                total = total - angle
 
                 sub_phi = np.delete(sub_phi, 0)
+
+            # we forgot to compare the last edge with the first edge so we simply check the total angle left with the current min angle
+            if total < angle_res:
+                angle_res = total
 
     res = np.radians(angle_res) / (2 * np.pi / max_degr)
 
