@@ -237,9 +237,12 @@ def norm_stress(coords, gtds, stress_alpha = 2):
 
     # calculate the euclidean distances
     eucl_dis = np.sqrt(np.sum(((np.expand_dims(coords, axis = 1) - coords) ** 2), 2))
+    scal_coords = coords * (np.nansum((eucl_dis / gtds) / np.nansum((eucl_dis ** 2) / (gtds ** 2))))
+
+    eucl_dis_new = np.sqrt(np.sum(((np.expand_dims(scal_coords, axis=1) - scal_coords) ** 2), 2))
 
     # compute stress by multiplying the distances with the graph theoretic distances, squaring it, multiplying by the weight factor and then taking the sum
-    stress_tot = np.sum(weights * ((eucl_dis - gtds) ** 2))
+    stress_tot = np.sum(weights * ((eucl_dis_new - gtds) ** 2))
     ns = 1 - (stress_tot / (np.shape(coords)[0] ** 2))
 
     return ns

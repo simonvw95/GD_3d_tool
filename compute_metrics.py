@@ -79,9 +79,6 @@ def parallel_metrics(coords, gtds, r, width):
     # angular resolution
     results['ar'] = angular_resolution(coords, gtds)
 
-    # node resolution
-    results['nr'] = node_resolution(coords, tar_res = r * 2)
-
     # occlusions
     # node-node occlusion
     results['nn'] = node_node_occl(coords, r)
@@ -193,14 +190,14 @@ if __name__ == '__main__':
                 # first for 2d
                 df_layout = pd.read_csv(techniques[tech]['path'].replace('-3d.csv', '-2d.csv'), sep = ';', header = 0).to_numpy()
 
-                r = min(1 / np.sqrt(graph.number_of_nodes()), 1/100)
+                r = min(1 / np.sqrt(graph.number_of_nodes()), 1/150)
                 width = r / 5
 
                 ns, cr, ar, nr, nn, ne, cn, ee = compute_metrics_old(df_layout, gtds, r, width)
 
                 print('file: {0}, dim: {1}, technique: {2}'.format(layout_file, techniques[tech]['dim'], tech_name))
 
-                # repeat for all views of a 3D projection:
+                # repeat for all views of a 3D layout:
                 metrics_views_list = []
 
                 views_file = layout_file.replace('3d.csv', 'views.pkl')
@@ -227,23 +224,6 @@ if __name__ == '__main__':
                 metrics_views_list = np.array(test_parallel)
                 print('parallel processing time taken: ' + str(round(time.time() - start_parallel, 2)))
                 tot_time += time.time() - start_parallel
-
-                # normalization step: for each quality metric, the lowest seen value of all views is set to be the lowest point (0), then the highest
-                # seen value of all views is set to the highest point (1)
-                qms = [ns, cr, ar, nr, nn, ne, cn, ee]
-                qm_idx = dict(zip(range(len(qms)), qms))
-
-                metrics_views_list = np.array(metrics_views_list)
-                for key, val in qm_idx.items():
-                    temp_array = np.append(metrics_views_list[:, key], val)
-                    curr_min = np.min(temp_array)
-                    scale_val = np.max(temp_array - curr_min)
-
-                    # extra check, if we only have values of 0 then we set the scale to 1, to avoid / 0
-                    if scale_val == 0.0:
-                        scale_val = 1
-
-                    metrics_views_list[:, key] = (metrics_views_list[:, key] - curr_min) / scale_val
 
                 metrics_list.append((tech_name, 2, ns, cr, ar, nr, nn, ne, cn, ee, np.array([])))
                 metrics_list.append((tech_name, 3, ns, cr, ar, nr, nn, ne, cn, ee, metrics_views_list))

@@ -13,20 +13,12 @@ from layout_techniques.pivot_mds import pivot_mds
 from layout_techniques.fa2 import run_fa2
 from wakepy import keepawake
 
-
-
-# projection_names = {
-#                     'A': ['pivot_mds']
-#                 }
-
-projection_names = {
+technique_names = {
                     'A': ['SM', 'pivot_mds', 'FA2', 'tsNET', 'tsNETstar']
                 }
 
-# projection_names = {'A' : ['pivot_mds', 'tsNET', 'tsNETstar']}
 
-
-def get_projections(graph, n_components, gtds, technique, perplexity = 15):
+def get_layouts(graph, n_components, gtds, technique, perplexity = 15):
 
     layouts = {}
 
@@ -97,7 +89,7 @@ if __name__ == '__main__':
             graph = nx.from_pandas_edgelist(df, 'from', 'to', edge_attr = 'strength')
             graph = nx.convert_node_labels_to_integers(graph)
 
-            selected_projections = projection_names[selection]
+            selected_layouts = technique_names[selection]
 
             gtds_file = 'data/{0}/{0}-gtds.csv'.format(dataset_name)
             if not os.path.isfile(gtds_file):
@@ -112,26 +104,26 @@ if __name__ == '__main__':
 
             for n_components in [2, 3]:
 
-                for proj_name in selected_projections:
+                for lay_name in selected_layouts:
 
-                    output_file = os.path.join(constants.output_dir, '{0}-{1}-{2}d.csv'.format(dataset_name, proj_name, n_components))
+                    output_file = os.path.join(constants.output_dir, '{0}-{1}-{2}d.csv'.format(dataset_name, lay_name, n_components))
 
                     # if it doesnt exist
                     if not os.path.isfile(output_file) or overwrite:
-                        print('Doing ' + str(proj_name) + ' in ' + str(n_components) + 'd')
+                        print('Doing ' + str(lay_name) + ' in ' + str(n_components) + 'd')
                         if dataset_name in perplx:
                             perp = perplx[dataset_name]
                         else:
                             perp = 15
 
-                        projections = get_projections(graph, n_components, gtds, technique = proj_name, perplexity = perp)
+                        layouts = get_layouts(graph, n_components, gtds, technique = lay_name, perplexity = perp)
 
-                        if proj_name == 'SM':
-                            p, _ = projections[proj_name]
+                        if lay_name == 'SM':
+                            p, _ = layouts[lay_name]
                         else:
-                            p = projections[proj_name]
+                            p = layouts[lay_name]
 
-                        print('dim: {0}, proj: {1}'.format(n_components, proj_name))
+                        print('dim: {0}, layout: {1}'.format(n_components, lay_name))
                         print('output_file: {0}'.format(output_file))
 
                         # sometimes tsnet* does weird things with the shape

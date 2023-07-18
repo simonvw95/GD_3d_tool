@@ -17,8 +17,10 @@ show_user_picked_viewpoints = False #Only works if evaluationdata is passed to t
 metrics_dir = 'metrics'
 output_dir = 'layouts'
 analysis_dir = 'analysis'
-user_mode = 'free' #options: ['free', 'eval_full', 'eval_half', 'image', 'evalimage']
+metrics_projects_dir = 'metrics_projections'
 
+
+user_mode = 'free' #options: ['free', 'eval_full', 'eval_half', 'image', 'evalimage']
 #ordinal_datasets = ['Wine', 'Concrete', 'Software',]
 ordinal_datasets = ['Grid']
 #categorical_datasets = ['AirQuality', 'Reuters', 'WisconsinBreastCancer']
@@ -31,16 +33,22 @@ categorical_datasets = []
 
 debug_mode = False
 
+
 def get_consolid_metrics() -> pd.DataFrame:
+
     consolid_metrics = os.path.join(metrics_dir, 'metrics.pkl')
     df_consolid = pd.read_pickle(consolid_metrics)
+
     return df_consolid
 
-def get_views_metrics(dataset, projection) -> np.ndarray:
+
+def get_views_metrics(dataset, layout) -> np.ndarray:
+
     df_consolid = get_consolid_metrics()
-    df = df_consolid.loc[(df_consolid['projection_name'] == projection)
+    df = df_consolid.loc[(df_consolid['layout_name'] == layout)
                          & (df_consolid['dataset_name'] == f'{dataset}.pkl')
                          & (df_consolid['n_components'] == 3)]
     views_metrics = np.concatenate(df['views_metrics'].to_numpy())[:, 1:]
+
     return views_metrics
     #return the metric values of each view

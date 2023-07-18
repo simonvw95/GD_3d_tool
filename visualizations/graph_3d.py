@@ -10,12 +10,10 @@ import pyqtgraph.opengl as gl
 from matplotlib import cm
 import numpy as np
 import pyqtgraph as pg
-import copy
-import networkx as nx
 from OpenGL.GL import *
 
 
-class CustomScatterItem(gl.GLGraphItem):
+class CustomScatterItem(gl.GLScatterPlotItem):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -50,8 +48,43 @@ class CustomScatterItem(gl.GLGraphItem):
                     """)
         ])
 
+class CustomGraphItem(gl.GLGraphItem):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-class Scatter3D(SyncedCameraViewWidget):
+    def initializeGL(self):
+        super(CustomGraphItem, self).initializeGL()
+
+        # Custom shader draws dark edges around points
+        self.shader = ShaderProgram('pointSprite', [
+            VertexShader("""
+                                void main() {
+                                    gl_PointSize = gl_Normal.x / 1.2;
+                                    gl_Position = ftransform();
+                                    gl_FrontColor = gl_Color; 
+                                } 
+                            """),
+            FragmentShader("""
+                            #version 120
+                            uniform sampler2D texture;
+                            void main ( )
+                            {
+                            float dist = sqrt(pow(gl_PointCoord.x - 0.5, 2) + pow(gl_PointCoord.y - 0.5, 2));
+                            if (dist >= 0.30 && dist < 0.50)
+                                {
+                                    float diff = 0.05 * (0.2 / (0.50 - dist));
+                                    gl_FragColor = texture2D(texture, gl_PointCoord) * gl_Color - vec4(diff,diff,diff,0);
+                                }
+                            else if (dist < 0.30)
+                                gl_FragColor = texture2D(texture, gl_PointCoord) * gl_Color;
+                            else
+                                gl_FragColor = vec4(0,0,0,0);
+                            }
+                    """)
+        ])
+
+
+class Graph3D(SyncedCameraViewWidget):
     def __init__(self, data, labels, cmap, iscategorical, edges, parent=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -75,35 +108,43 @@ class Scatter3D(SyncedCameraViewWidget):
                     self.color[i] = self.cmap(self.labels[i] / max(self.labels))
         sorted_indices = self.sorted_indices()
 
-
-        # lineplot
         self.edges = np.array(edges)
-        # we are sorting the ordering of the coordinates based on distance from the eye, so we have to relabel edges as well
-        new_edge_idcs = {}
-        for i in range(len(sorted_indices)):
-            new_edge_idcs[i] = sorted_indices[i]
 
-        edges_copy = copy.deepcopy(self.edges)
-        for i in range(len(edges_copy)):
-            n1 = edges_copy[i][0]
-            n2 = edges_copy[i][1]
-            edges_copy[i] = [new_edge_idcs[n1], new_edge_idcs[n2]]
-
-        testG = nx.Graph()
-        testG.add_edges_from(self.edges)
-        newG = nx.relabel_nodes(testG, new_edge_idcs)
-
-        size = 1000
-        size_test = np.zeros(shape = (np.shape(data)[0],))
-        size_test.fill(np.float32(size))
-
-        self.graph_item = CustomScatterItem(edges =self.edges, nodePositions = data, pxMode = True, edgeColor = pg.mkColor('red'), edgeWidth=3, nodeSize =  size_test, nodeColor = self.color, size = size_test)
-        #self.graph_item.setGLOptions('translucent')
-        self.graph_item.setData(size = size_test, pxMode = False)
-        #self.graph_item = gl.GLGraphItem(edges = self.edges, nodePositions = data, edgeColor = pg.mkColor('blue'), edgeWidth=3, nodeSize = np.shape(data)[0] * [np.float(100)], nodeColor = self.color, pxMode = True)
+        self.graph_item = CustomGraphItem(edges =self.edges, nodePositions = data, pxMode = True, edgeColor = pg.mkColor('black'), edgeWidth=3)
         self.addItem(self.graph_item)
 
+        self.scatter_item = CustomScatterItem(pos=data[sorted_indices], size=15, color=self.color[sorted_indices],
+                                              pxMode=True)
+        self.scatter_item.setGLOptions('translucent')
+        self.addItem(self.scatter_item)
+
         self.update_order()
+
+    def update_order(self):
+        """
+        When drawing in translucent mode, items need to be drawn in order from back to front, for proper clipping,
+        this function recomputes the point order and changes the point color based on distance from the eye.
+        """
+        eye = self.cameraPosition()
+        distances = (-np.linalg.norm(self.data - eye, axis=1))
+        distances -= np.min(distances)
+        distances /= np.max(distances)
+        distances -= 1.0
+
+        # temp testing
+        distances *= 2
+
+        sorted_indices = np.argsort(distances)
+        full = np.full((distances.shape[0], 4), np.array([0.35, 0.35, 0.35, 0]))
+        color_adjustment = np.multiply(full, -distances[:, None])
+
+        self.graph_item.setData(edges=self.edges,
+                                nodePositions=self.data)  # , nodeColor = self.color[sorted_indices] + color_adjustment[sorted_indices], size = 7)
+
+        self.scatter_item.setData(pos=self.data[sorted_indices],
+                                  color=self.color[sorted_indices] + color_adjustment[sorted_indices])
+
+
 
     def sorted_indices(self):
         """
@@ -113,46 +154,12 @@ class Scatter3D(SyncedCameraViewWidget):
         eye = self.cameraPosition()
         return np.argsort(-np.linalg.norm(self.data - eye, axis=1))
 
-    def update_order(self):
-        """
-        When drawing in translucent mode, items need to be drawn in order from back to front, for proper clipping,
-        this function recomputes the point order and changes the point color based on distance from the eye.
-        """
-
-        eye = self.cameraPosition()
-        distances = (-np.linalg.norm(self.data - eye, axis=1))
-        distances -= np.min(distances)
-        distances /= np.max(distances)
-        distances -= 1.0
-        sorted_indices = np.argsort(distances)
-        full = np.full((distances.shape[0], 4), np.array([0.35, 0.35, 0.35, 0]))
-        color_adjustment = np.multiply(full, -distances[:, None])
-
-        # we are sorting the ordering of the coordinates based on distance from the eye, so we have to relabel edges as well
-        new_edge_idcs = {}
-        for i in range(len(sorted_indices)):
-            new_edge_idcs[i] = sorted_indices[i]
-
-        edges_copy = copy.deepcopy(self.edges)
-        for i in range(len(edges_copy)):
-            n1 = edges_copy[i][0]
-            n2 = edges_copy[i][1]
-            edges_copy[i] = [new_edge_idcs[n1], new_edge_idcs[n2]]
-
-        testG = nx.Graph()
-        testG.add_edges_from(self.edges)
-        newG = nx.relabel_nodes(testG, new_edge_idcs)
-
-        self.graph_item.setData(edges=self.edges, nodePositions=self.data)#, nodeColor = self.color[sorted_indices] + color_adjustment[sorted_indices], size = 7)
-
-
     def on_view_change(self):
         super().on_view_change()
         self.update_order()
         self.parent.highlight()
 
     def set_data(self, data, labels, cmap, iscategorical, edges):
-
         self.data = data - (np.max(data) - np.min(data)) / 2  # Center the data around (0,0,0)
         self.labels = labels
         self.cmap = cmap
@@ -168,37 +175,24 @@ class Scatter3D(SyncedCameraViewWidget):
                 else:
                     m = max(self.labels)
                     self.color[i] = self.cmap(self.labels[i] / m)
-        sorted_indices = self.sorted_indices()
 
         self.edges = np.array(edges)
+        self.graph_item.setData(edges=self.edges, nodePositions=self.data,
+                                nodeColor=self.color)  # , nodeColor = self.color)
 
-        # we are sorting the ordering of the coordinates based on distance from the eye, so we have to relabel edges as well
-        new_edge_idcs = {}
-        for i in range(len(sorted_indices)):
-            new_edge_idcs[i] = sorted_indices[i]
-
-        edges_copy = copy.deepcopy(self.edges)
-        for i in range(len(edges_copy)):
-            n1 = edges_copy[i][0]
-            n2 = edges_copy[i][1]
-            edges_copy[i] = [new_edge_idcs[n1], new_edge_idcs[n2]]
-
-        testG = nx.Graph()
-        testG.add_edges_from(self.edges)
-        newG = nx.relabel_nodes(testG, new_edge_idcs)
-
-        self.graph_item.setData(edges = self.edges, nodePositions = self.data, nodeColor = self.color)#, nodeColor = self.color)
+        sorted_indices = self.sorted_indices()
+        self.scatter_item.setData(pos=self.data[sorted_indices], color=self.color[sorted_indices])
 
         self.on_view_change()
         self.update_views()
 
     def paintGL(self):
-        super(Scatter3D, self).paintGL()
+        super(Graph3D, self).paintGL()
         if self.labels is not None:
             ulabels = np.unique(self.labels)
             painter = QPainter(self)
             font = QFont()
-            font_size = int(self.deviceHeight() / 30)
+            font_size = self.deviceHeight() / 30
             font.setPixelSize(font_size)
             painter.setFont(font)
             painter.setPen(pg.mkPen())
