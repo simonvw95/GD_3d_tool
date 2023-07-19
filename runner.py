@@ -8,7 +8,7 @@ import time
 import constants
 
 from sklearn import manifold
-from layout_techniques.tsnet_v2 import tsNET
+from layout_techniques.tsnet import tsNET
 from layout_techniques.pivot_mds import pivot_mds
 from layout_techniques.fa2 import run_fa2
 from wakepy import keepawake

@@ -3,11 +3,13 @@
 import networkx as nx
 import copy
 import numpy as np
+# setting np bool to a deprecated version so that the import for thesne works
+np.bool = np.bool_
 from layout_techniques.pivot_mds import pivot_mds
 from layout_techniques.thesne import tsnet
 
 
-def tsNET(graph, star = False, dimensions = 2, perplexity = 40, learning_rate = 50, gtds = None, n = 500):
+def tsNET(graph, star = False, dimensions = 2, perplexity = 120, learning_rate = 50, gtds = None, n = 500, verbose = False):
 
     # Global hyperparameters
     n = n  # Maximum #iterations before giving up
@@ -30,13 +32,20 @@ def tsNET(graph, star = False, dimensions = 2, perplexity = 40, learning_rate = 
     Y_init = None
 
     if star:
-        Y_init = pivot_mds(g = graph, dim = dimensions, D = gtds)
+        Y_init = pivot_mds(g = graph, dim = dimensions, D = gtds, pivots = int(graph.number_of_nodes() / 10))
 
     # Compute the shortest-path distance matrix.
     if gtds is None:
         X = nx.floyd_warshall_numpy(graph)
     else:
         X = gtds
+        
+    # if there are disconnected components then some distances are inf, resolve this
+
+    X[X == np.inf] = 10 * np.max(X)
+    
+    # normalize gtds
+    X /= np.max(X)
 
     # The actual optimization is done in the thesne module.
     Y = tsnet(
@@ -48,11 +57,10 @@ def tsNET(graph, star = False, dimensions = 2, perplexity = 40, learning_rate = 
         initial_l_c=lambdas_2[1], final_l_c=lambdas_3[1], l_c_switch=n // 2,
         initial_l_r=lambdas_2[2], final_l_r=lambdas_3[2], l_r_switch=n // 2,
         r_eps=r_eps, autostop=tolerance, window_size=window_size,
-        verbose=False
+        verbose=verbose
     )
 
     Y = normalize_layout(Y)
-
     return Y
 
 
