@@ -1,7 +1,3 @@
-"""
-Simple example using BarGraphItem
-"""
-import math
 from glob import glob
 import os
 import numpy as np
@@ -72,6 +68,7 @@ class Tool(pg.GraphicsWindow):
         self.graph_2d = None
         self.graph_3d = None
         self.metric_proj = None
+        self.stats = None
 
         self.curr_proj_idx = None
 
@@ -107,7 +104,7 @@ class Tool(pg.GraphicsWindow):
         palette = QtGui.QPalette()
         palette.setColor(QtGui.QPalette.Window, QColor(255, 255, 255, 255))
         self.menu.setPalette(palette)
-        self.menu.setAutoFillBackground(True);
+        self.menu.setAutoFillBackground(True)
 
         # get the graph file
         input_file = glob('data/{0}/*-src.csv'.format(self.dataset_name))[0]
@@ -445,6 +442,7 @@ class Tool(pg.GraphicsWindow):
 
         proj_data -= curr_min
         proj_data /= scale_val
+        self.proj_data = proj_data
 
         if self.metric_proj is None:
             self.metric_proj = Scatter2D(proj_data, self.cmap, parent=self)
@@ -452,6 +450,23 @@ class Tool(pg.GraphicsWindow):
             self.layoutgb.addWidget(self.metric_proj, 0, 3)
         else:
             self.metric_proj.set_data(proj_data, self.cmap)
+
+    def initialize_stats(self):
+
+        self.stats = pg.LayoutWidget()
+
+        # Set background white:
+        palette = QtGui.QPalette()
+        palette.setColor(QtGui.QPalette.Window, QColor(255, 255, 255, 255))
+        self.stats.setPalette(palette)
+        self.stats.setAutoFillBackground(True)
+
+        labels_stats = {}
+        for i in list(reversed(range(len(constants.metrics)))):
+            better_raw_viewpoints_perc = round(np.sum((self.original_metrics_views[:, i] > self.original_qms[i])) / len(self.original_metrics_views[:, i]) * 100, 3)
+            labels_stats[constants.metrics[i]] = self.stats.addLabel(text = constants.metrics[i] + ': ' + str(better_raw_viewpoints_perc) + '% of viewpoints are better than 2d value of ' + str(round(self.original_qms[i], 5)), row = len(self.stats.rows), col = 0)
+
+        self.layoutgb.addWidget(self.stats, 1, 3)
 
     def current_quality(self):
         eye = self.sphere.cameraPosition()
@@ -498,6 +513,8 @@ class Tool(pg.GraphicsWindow):
             #Update the line in the sphere colorbar
             metric_score = nearest_values[constants.metrics.index(self.current_metric)]
             self.color_bar_line.setValue(255 * metric_score)
+
+            self.metric_proj.set_data(self.proj_data, self.cmap, self.nearest_viewpoint_idx)
 
             if constants.user_mode != 'free':
                 self.check_select_available()
@@ -624,8 +641,10 @@ class Tool(pg.GraphicsWindow):
         self.initialize_histogram()
         self.initialize_sphere()
         self.initialize_metric_proj()
+        self.initialize_stats()
         self.graph_3d.update_views()
         self.highlight()
+
 
     def keyboard_event(self, event):
 

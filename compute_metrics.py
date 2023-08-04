@@ -152,7 +152,7 @@ if __name__ == '__main__':
             gtds = gtds.to_numpy()
 
             dataset = input_file.split('/')[1]
-            layouts = glob(os.path.join(constants.output_dir, '{0}*.csv'.format(dataset_name)))
+            layouts = glob(os.path.join(constants.output_dir, '{0}-*.csv'.format(dataset_name)))
 
             # calculate the metrics per technique
             techniques = {}

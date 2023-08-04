@@ -253,11 +253,9 @@ class parallelBarPlot(pg.PlotWidget):
             rect.highlight()
             self.highlighted_rects.append(rect)
         for i, text in enumerate(self.metric_texts):
-            # check how many values are better than 2d
-            better_raw_viewpoints_perc = np.sum((all_original_values[:, i] - original_values_2d[i]) > 0.001) / len(all_original_values[:, i]) * 100
 
             text.setText(
-                F"{constants.metrics[i]}: {'viewpoint ' + str(round(original_values[i], 2))}||              {str(round(better_raw_viewpoints_perc, 3)) + '% of viewpoints are better than 2d'}")
+                F"{constants.metrics[i]}: {'viewpoint value: ' + str(round(original_values[i], 5))}")
 
     def on_rect_click(self, rect, percentage):
         if self.lock or constants.user_mode == 'evalimage':
