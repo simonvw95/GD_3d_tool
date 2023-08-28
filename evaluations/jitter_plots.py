@@ -50,6 +50,56 @@ for m in metrics:
                 res_dict[tech].append(sum(data_frame.iloc[i]['views_metrics'][:, col_idx] > data_frame.iloc[i][m]) / constants.samples * 100)
     metric_ds[m] = res_dict
 
+# fourth dataset, aggregated over metric where absolute value improvements are shown, then mean taken: {'metric1' : {'technique1' : [values], 'technique2' : [values]}, 'metric2' : ..}
+metric_ds_perc = {}
+for m in metrics:
+    col_idx = metrics_col_idx[m]
+    res_dict_perc = dict(zip(list(techniques), ([] for _ in range(len(techniques)))))
+    for tech in techniques:
+        for i in range(len(data_frame)):
+            if (data_frame.iloc[i]['n_components'] == 3) and (data_frame.iloc[i]['layout_technique'] == tech):
+                if sum(data_frame.iloc[i]['views_metrics'][:, col_idx] > data_frame.iloc[i][m]) > 0 and data_frame.iloc[i][m] >= 0:
+                    idcs = data_frame.iloc[i]['views_metrics'][:, col_idx] > data_frame.iloc[i][m]
+                    perc_impr_avg = np.mean(data_frame.iloc[i]['views_metrics'][:, col_idx][idcs] - data_frame.iloc[i][m])
+                    res_dict_perc[tech].append(perc_impr_avg)
+                else:
+                    res_dict_perc[tech].append(0)
+    metric_ds_perc[m] = res_dict_perc
+
+
+# fifth dataset, aggregated over metric where max absolute value improvements are shown: {'metric1' : {'technique1' : [values], 'technique2' : [values]}, 'metric2' : ..}
+metric_ds_max = {}
+for m in metrics:
+    col_idx = metrics_col_idx[m]
+    res_dict_max = dict(zip(list(techniques), ([] for _ in range(len(techniques)))))
+    for tech in techniques:
+        for i in range(len(data_frame)):
+            if (data_frame.iloc[i]['n_components'] == 3) and (data_frame.iloc[i]['layout_technique'] == tech):
+                if sum(data_frame.iloc[i]['views_metrics'][:, col_idx] > data_frame.iloc[i][m]) > 0 and data_frame.iloc[i][m] >= 0:
+                    idcs = data_frame.iloc[i]['views_metrics'][:, col_idx] > data_frame.iloc[i][m]
+                    perc_impr_max = np.max(data_frame.iloc[i]['views_metrics'][:, col_idx][idcs] - data_frame.iloc[i][m])
+                    res_dict_max[tech].append(perc_impr_max)
+                else:
+                    res_dict_max[tech].append(0)
+    metric_ds_max[m] = res_dict_max
+
+
+# sixth dataset, aggregated over metric where absolute value improvements are shown: {'metric1' : [values], 'metric2' : ..}
+metric_ds_max_agg = {}
+for m in metrics:
+    col_idx = metrics_col_idx[m]
+    res_max = []
+    for tech in techniques:
+        for i in range(len(data_frame)):
+            if (data_frame.iloc[i]['n_components'] == 3) and (data_frame.iloc[i]['layout_technique'] == tech):
+                if sum(data_frame.iloc[i]['views_metrics'][:, col_idx] > data_frame.iloc[i][m]) > 0 and data_frame.iloc[i][m] >= 0:
+                    idcs = data_frame.iloc[i]['views_metrics'][:, col_idx] > data_frame.iloc[i][m]
+                    abs_impr_max = np.max(data_frame.iloc[i]['views_metrics'][:, col_idx][idcs] - data_frame.iloc[i][m])
+                    res_max.append(abs_impr_max)
+                else:
+                    res_max.append(0)
+    metric_ds_max_agg[m] = res_max
+
 
 
 
@@ -76,6 +126,48 @@ for m in metrics:
 
 
 #################################################################################################################################
+# layout technique on x axis, one plot for each metric, abs improvements mean
+for m in metrics:
+    layout_technique_list = []
+    results_list = []
+    for tech in techniques:
+        layout_technique_list += [tech] * len(metric_ds_perc['stress'][tech])
+        results_list += metric_ds_perc[m][tech]
+
+    end_data = pd.DataFrame({'Layout technique': layout_technique_list, 'mean absolute improvements of better 3d views' : results_list})
+
+    plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+    plt.xticks(rotation=45, ha="right")
+    ax = plt.gca()
+    ax.set_title('Layout technique comparison for ' + str(m))
+    sns.stripplot(data=end_data, x='Layout technique', y='mean absolute improvements of better 3d views', size=5, ax=ax, jitter=0.10)
+    plt.savefig('evaluations/improv_' + str(m) + '.png')
+    plt.clf()
+    plt.close('all')
+
+
+#################################################################################################################################
+# layout technique on x axis, one plot for each metric, abs improvements max
+for m in metrics:
+    layout_technique_list = []
+    results_list = []
+    for tech in techniques:
+        layout_technique_list += [tech] * len(metric_ds_max['stress'][tech])
+        results_list += metric_ds_max[m][tech]
+
+    end_data = pd.DataFrame({'Layout technique': layout_technique_list, 'max absolute improvements of better 3d views' : results_list})
+
+    plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+    plt.xticks(rotation=45, ha="right")
+    ax = plt.gca()
+    ax.set_title('Layout technique comparison for ' + str(m))
+    sns.stripplot(data=end_data, x='Layout technique', y='max absolute improvements of better 3d views', size=5, ax=ax, jitter=0.10)
+    plt.savefig('evaluations/max_improv_' + str(m) + '.png')
+    plt.clf()
+    plt.close('all')
+
+
+#################################################################################################################################
 # layout technique on x axis, one plot for all metrics, each metric differently colored
 layout_technique_list = []
 results_list = []
@@ -95,6 +187,26 @@ ax.set_title('Layout technique comparison')
 sns.stripplot(data=end_data, x='Layout technique', y='% of viewpoints better than 2d', size=5, ax=ax, jitter=0.10, hue='Metric',
                       palette=['red', 'lavender', 'green', 'gray', 'midnightblue', 'black', 'blue', 'yellow'])
 plt.savefig('evaluations/all_metrics_layout_techn_jitter.png')
+plt.clf()
+plt.close('all')
+
+
+#################################################################################################################################
+# layout technique on x axis, one plot for all metrics
+results_list = []
+categories = []
+for m in metrics:
+    results_list += metric_ds_max_agg[m]
+    categories += [m] * len(metric_ds_max_agg[m])
+
+end_data = pd.DataFrame({'max absolute improvements of better 3d views' : results_list, 'Metric' : categories})
+
+plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+plt.xticks(rotation=45, ha="right")
+ax = plt.gca()
+ax.set_title('Metric comparison')
+sns.stripplot(data=end_data, x='Metric', y='max absolute improvements of better 3d views', size=5, ax=ax, jitter=0.10)
+plt.savefig('evaluations/all_metrics_agg_jitter.png')
 plt.clf()
 plt.close('all')
 

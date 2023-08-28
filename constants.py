@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 
-metrics = ['stress', 'crossing_resolution', 'angular_resolution', 'node_resolution', 'node-node_occlusion', 'node-edge_occlusion', 'crossing_number', 'edge-edge_occlusion']
+metrics = ['stress', 'crossing_resolution', 'angular_resolution', 'node_resolution', 'node-node_occlusion', 'node-edge_occlusion', 'crossing_number', 'edge-edge_occlusion', 'edge_length_deviation']
 
 perplexities = {'3elt' : 120, 'bcsstk09' : 80, 'block_2000' : 120, 'cage8' : 80, 'CA-GrQc' : 120, 'can_96' : 20, 'dwt_72' : 15,
                 'dwt_419' : 40, 'dwt_1005' : 40, 'EVA' : 600, 'grid17' : 40, 'jazz' : 120, 'lesmis' : 50, 'mesh3e1' : 40,

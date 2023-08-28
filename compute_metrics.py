@@ -10,7 +10,6 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import constants
-
 from metrics_gd import *
 #from metrics_gd_all import *
 
@@ -19,111 +18,117 @@ from wakepy import keepawake
 import warnings
 warnings.filterwarnings("ignore")
 
-def compute_metrics(coords, gtds, r, width):
 
-    # normalized stress, node resolution
-    ns, nr = norm_stress_node_resolution(coords, gtds, tar_res = r * 2)
-
-    # angular resolution
-    ar = angular_resolution(coords, gtds)
-
-    # occlusions
-    # node-node occlusion
-    nn = node_node_occl(coords, r)
-
-    # node-edge occlusion
-    ne = node_edge_occl(coords, gtds, r, width)
-
-    # edge edge occlusion, crossing number, crossing resolution
-    ee, cn, cr = edge_edge_occl_crossing_number_crossing_res(coords, gtds, r, width)
-
-    return ns, cr, ar, nr, nn, ne, cn, ee
+def compute_metrics_old(coords, gtds, r, width, metrics_times):
 
 
-def compute_metrics_old(coords, gtds, r, width):
     # normalized stress
+    start = time.time()
     ns = norm_stress(coords, gtds)
+    metrics_times['stress'] = time.time() - start
 
     # crossing resolution
+    start = time.time()
     cr = crossing_res(coords, gtds)
+    metrics_times['crossing_resolution'] = time.time() - start
 
     # angular resolution
+    start = time.time()
     ar = angular_resolution(coords, gtds)
+    metrics_times['angular_resolution'] = time.time() - start
 
     # node resolution
-    nr = node_resolution(coords, tar_res = r * 2)
+    start = time.time()
+    #nr = node_resolution(coords, tar_res = r * 2)
+    nr = node_resolution(coords)
+    metrics_times['node_resolution'] = time.time() - start
 
     # occlusions
     # node-node occlusion
+    start = time.time()
     nn = node_node_occl(coords, r)
+    metrics_times['node-node_occlusion'] = time.time() - start
 
     # node-edge occlusion
+    start = time.time()
     ne = node_edge_occl(coords, gtds, r, width)
+    metrics_times['node-edge_occlusion'] = time.time() - start
 
     # edge-edge occlusion case 1: (simply crossing number)
+    start = time.time()
     cn = crossings_number(coords, gtds)
+    metrics_times['crossing_number'] = time.time() - start
 
     # edge-edge occlusion case 2: edges that are practically on top of each other (w.r.t. a certain margin)
+    start = time.time()
     ee = edge_edge_occl(coords, gtds, r, width)
+    metrics_times['edge-edge_occlusion'] = time.time() - start
 
-    return ns, cr, ar, nr, nn, ne, cn, ee
+    # edge length deviation
+    start = time.time()
+    el = edge_lengths_sd(coords, gtds)
+    metrics_times['edge_length_deviation'] = time.time() - start
 
-
-def parallel_metrics(coords, gtds, r, width):
-
-    results = {}
-
-    # normalized stress, node resolution
-    results['ns'], results['nr'] = norm_stress_node_resolution(coords, gtds, tar_res=r * 2)
-
-    # angular resolution
-    results['ar'] = angular_resolution(coords, gtds)
-
-    # occlusions
-    # node-node occlusion
-    results['nn'] = node_node_occl(coords, r)
-
-    # node-edge occlusion
-    results['ne'] = node_edge_occl(coords, gtds, r, width)
-
-    # edge edge occlusion, crossing number, and crossing resolution
-    results['ee'], results['cn'], results['cr'] = edge_edge_occl_crossing_number_crossing_res(coords, gtds, r, width)
-
-    return results
+    return ns, cr, ar, nr, nn, ne, cn, ee, el, metrics_times
 
 
-def parallel_metrics_old(coords, gtds, r, width):
+def parallel_metrics_old(coords, gtds, r, width, metrics_times):
 
     results = {}
+    start_ns = time.time()
     results['ns'] = norm_stress(coords, gtds)
+    metrics_times['stress'] = time.time() - start_ns
 
     # crossing resolution
+    start_cr = time.time()
     results['cr'] = crossing_res(coords, gtds)
+    metrics_times['crossing_resolution'] = time.time() - start_cr
 
     # angular resolution
+    start_ar = time.time()
     results['ar'] = angular_resolution(coords, gtds)
+    metrics_times['angular_resolution'] = time.time() - start_ar
 
     # node resolution
-    results['nr'] = node_resolution(coords, tar_res = r * 2)
+    start_nr = time.time()
+    #results['nr'] = node_resolution_old(coords, tar_res = r * 2)
+    results['nr'] = node_resolution(coords)
+    metrics_times['node_resolution'] = time.time() - start_nr
 
     # occlusions
     # node-node occlusion
+    start_nn = time.time()
     results['nn'] = node_node_occl(coords, r)
+    metrics_times['node-node_occlusion'] = time.time() - start_nn
 
     # node-edge occlusion
+    start_ne = time.time()
     results['ne'] = node_edge_occl(coords, gtds, r, width)
+    metrics_times['node-edge_occlusion'] = time.time() - start_ne
 
     # edge-edge occlusion case 1: (simply crossing number)
+    start_cn = time.time()
     results['cn'] = crossings_number(coords, gtds)
+    metrics_times['crossing_number'] = time.time() - start_cn
 
     # edge-edge occlusion case 2: edges that are practically on top of each other (w.r.t. a certain margin)
+    start_ee = time.time()
     results['ee'] = edge_edge_occl(coords, gtds, r, width)
+    metrics_times['edge-edge_occlusion'] = time.time() - start_ee
+
+    # edge length deviation
+    start_el = time.time()
+    results['el'] = edge_lengths_sd(coords, gtds)
+    metrics_times['edge_length_deviation'] = time.time() - start_el
+
+    results['metrics_times'] = metrics_times
 
     return results
 
 
 if __name__ == '__main__':
     with keepawake(keep_screen_awake=False):
+
 
         all_datasets = os.listdir('data/')
         sizes = {}
@@ -138,6 +143,7 @@ if __name__ == '__main__':
             print(dataset_name)
 
             tot_time = 0
+            metrics_times = dict(zip(constants.metrics, [0] * len(constants.metrics)))
 
             input_file = glob(f'data/{dataset_name}/*-src.csv')[0]
 
@@ -180,8 +186,8 @@ if __name__ == '__main__':
             for tech in techniques:
                 tech_name = techniques[tech]['name']
                 layout_file = techniques[tech]['path']
+                print('file: {0}, technique: {1}'.format(layout_file, tech_name))
 
-                print('file: {0}, dim: {1}, technique: {2}'.format(techniques[tech]['path'].replace('-3d.csv', '-2d.csv'), 2, tech_name.replace('-3d.csv', '-2d.csv')))
                 if overwrite == False:
                     if tech in exist_techniques:
                         print('This technique was already computed, using existing computations (set overwrite to True if you want to recompute)')
@@ -193,9 +199,9 @@ if __name__ == '__main__':
                 r = min(1 / np.sqrt(graph.number_of_nodes()), 1/150)
                 width = r / 5
 
-                ns, cr, ar, nr, nn, ne, cn, ee = compute_metrics_old(df_layout, gtds, r, width)
+                ns, cr, ar, nr, nn, ne, cn, ee, el, metrics_times = compute_metrics_old(df_layout, gtds, r, width, metrics_times)
 
-                print('file: {0}, dim: {1}, technique: {2}'.format(layout_file, techniques[tech]['dim'], tech_name))
+
 
                 # repeat for all views of a 3D layout:
                 metrics_views_list = []
@@ -206,9 +212,10 @@ if __name__ == '__main__':
                 pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
                 start_parallel = time.time()
                 try:
-                    parallel_metrics_with_gtds = partial(parallel_metrics_old, gtds=gtds, r = r, width = width)
+                    parallel_metrics_with_gtds = partial(parallel_metrics_old, gtds=gtds, r = r, width = width, metrics_times = metrics_times)
                     res_iter = pool.map(parallel_metrics_with_gtds, [view for view in views])
                 except Exception as e:
+                    print(e)
                     pool.close()
                     pool.join()
 
@@ -219,14 +226,14 @@ if __name__ == '__main__':
                 # each value was saved in a dict, so now we extract those values
                 test_parallel = [0] * len(views)
                 for i in range(len(views)):
-                    test_parallel[i] = [res_list[i]['ns'], res_list[i]['cr'], res_list[i]['ar'], res_list[i]['nr'], res_list[i]['nn'], res_list[i]['ne'], res_list[i]['cn'], res_list[i]['ee']]
+                    metrics_times = res_list[i]['metrics_times']
+                    test_parallel[i] = [res_list[i]['ns'], res_list[i]['cr'], res_list[i]['ar'], res_list[i]['nr'], res_list[i]['nn'], res_list[i]['ne'], res_list[i]['cn'], res_list[i]['ee'], res_list[i]['el']]
 
                 metrics_views_list = np.array(test_parallel)
-                print('parallel processing time taken: ' + str(round(time.time() - start_parallel, 2)))
                 tot_time += time.time() - start_parallel
 
-                metrics_list.append((tech_name, 2, ns, cr, ar, nr, nn, ne, cn, ee, np.array([])))
-                metrics_list.append((tech_name, 3, ns, cr, ar, nr, nn, ne, cn, ee, metrics_views_list))
+                metrics_list.append((tech_name, 2, ns, cr, ar, nr, nn, ne, cn, ee, el, np.array([])))
+                metrics_list.append((tech_name, 3, ns, cr, ar, nr, nn, ne, cn, ee, el, metrics_views_list))
 
                 qm_names = constants.metrics
                 df_metrics = pd.DataFrame.from_records(metrics_list)
@@ -234,3 +241,6 @@ if __name__ == '__main__':
                 df_metrics.to_pickle(metrics_file)
 
             print('Total time taken for current graph: ' + str(round(tot_time, 2)))
+            for key in metrics_times:
+                print('Time taken for metric ' + key + ': ' + str(round(metrics_times[key], 3)))
+

@@ -464,7 +464,12 @@ class Tool(pg.GraphicsWindow):
         labels_stats = {}
         for i in list(reversed(range(len(constants.metrics)))):
             better_raw_viewpoints_perc = round(np.sum((self.original_metrics_views[:, i] > self.original_qms[i])) / len(self.original_metrics_views[:, i]) * 100, 3)
-            labels_stats[constants.metrics[i]] = self.stats.addLabel(text = constants.metrics[i] + ': ' + str(better_raw_viewpoints_perc) + '% of viewpoints are better than 2d value of ' + str(round(self.original_qms[i], 5)), row = len(self.stats.rows), col = 0)
+            best_res = np.max(self.original_metrics_views[:, i])
+            best_res_how_much_better = (best_res - self.original_qms[i]) / best_res
+
+            labels_stats[constants.metrics[i]] = self.stats.addLabel(text=constants.metrics[i] + ': 2d value ' + str(round(self.original_qms[i], 5)) + ' | best 3d value ' + str(round(best_res, 5)), row=len(self.stats.rows), col=0)
+            labels_stats[constants.metrics[i] + '_j'] = self.stats.addLabel(text = str(better_raw_viewpoints_perc) + '% of viewpoints are better than 2d value', row = len(self.stats.rows), col = 0)
+            labels_stats[constants.metrics[i] + '_i'] = self.stats.addLabel(text = str(round(best_res_how_much_better, 3) * 100) + '% improvement of best viewpoint over 2d value', row=len(self.stats.rows), col=0)
 
         self.layoutgb.addWidget(self.stats, 1, 3)
 
