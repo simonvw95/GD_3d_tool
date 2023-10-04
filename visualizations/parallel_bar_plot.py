@@ -242,7 +242,7 @@ class parallelBarPlot(pg.PlotWidget):
             self.addItem(bplot_users_half)
             self.addItem(bplot_users_full)
 
-    def highlight_bar_with_values(self, metric_values, original_values, values_2d, original_values_2d, all_metric_values, all_original_values):
+    def highlight_bar_with_values(self, metric_values, original_values):
         if constants.user_mode in ['image', 'evalimage']:
             return
         for rect in self.highlighted_rects:

@@ -10,6 +10,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import constants
+import json
 from metrics_gd import *
 #from metrics_gd_all import *
 
@@ -25,49 +26,49 @@ def compute_metrics_old(coords, gtds, r, width, metrics_times):
     # normalized stress
     start = time.time()
     ns = norm_stress(coords, gtds)
-    metrics_times['stress'] = time.time() - start
+    metrics_times['stress'] += time.time() - start
 
     # crossing resolution
     start = time.time()
     cr = crossing_res(coords, gtds)
-    metrics_times['crossing_resolution'] = time.time() - start
+    metrics_times['crossing_resolution'] += time.time() - start
 
     # angular resolution
     start = time.time()
     ar = angular_resolution(coords, gtds)
-    metrics_times['angular_resolution'] = time.time() - start
+    metrics_times['angular_resolution'] += time.time() - start
 
     # node resolution
     start = time.time()
     #nr = node_resolution(coords, tar_res = r * 2)
     nr = node_resolution(coords)
-    metrics_times['node_resolution'] = time.time() - start
+    metrics_times['node_resolution'] += time.time() - start
 
     # occlusions
     # node-node occlusion
     start = time.time()
     nn = node_node_occl(coords, r)
-    metrics_times['node-node_occlusion'] = time.time() - start
+    metrics_times['node-node_occlusion'] += time.time() - start
 
     # node-edge occlusion
     start = time.time()
     ne = node_edge_occl(coords, gtds, r, width)
-    metrics_times['node-edge_occlusion'] = time.time() - start
+    metrics_times['node-edge_occlusion'] += time.time() - start
 
     # edge-edge occlusion case 1: (simply crossing number)
     start = time.time()
     cn = crossings_number(coords, gtds)
-    metrics_times['crossing_number'] = time.time() - start
+    metrics_times['crossing_number'] += time.time() - start
 
     # edge-edge occlusion case 2: edges that are practically on top of each other (w.r.t. a certain margin)
     start = time.time()
     ee = edge_edge_occl(coords, gtds, r, width)
-    metrics_times['edge-edge_occlusion'] = time.time() - start
+    metrics_times['edge-edge_occlusion'] += time.time() - start
 
     # edge length deviation
     start = time.time()
     el = edge_lengths_sd(coords, gtds)
-    metrics_times['edge_length_deviation'] = time.time() - start
+    metrics_times['edge_length_deviation'] += time.time() - start
 
     return ns, cr, ar, nr, nn, ne, cn, ee, el, metrics_times
 
@@ -78,6 +79,7 @@ def parallel_metrics_old(coords, gtds, r, width, metrics_times):
     start_ns = time.time()
     results['ns'] = norm_stress(coords, gtds)
     metrics_times['stress'] = time.time() - start_ns
+
 
     # crossing resolution
     start_cr = time.time()
@@ -129,7 +131,6 @@ def parallel_metrics_old(coords, gtds, r, width, metrics_times):
 if __name__ == '__main__':
     with keepawake(keep_screen_awake=False):
 
-
         all_datasets = os.listdir('data/')
         sizes = {}
         for i in all_datasets:
@@ -138,9 +139,8 @@ if __name__ == '__main__':
         sorted_file_names = sorted(sizes, key = sizes.get)
 
         overwrite = False  # set to False if we do not want to overwrite existing metric results
-        #for dataset_name in ['grafo1126']:
+        #for dataset_name in ['grid']:
         for dataset_name in sorted_file_names:
-            print(dataset_name)
 
             tot_time = 0
             metrics_times = dict(zip(constants.metrics, [0] * len(constants.metrics)))
@@ -152,6 +152,8 @@ if __name__ == '__main__':
             df = pd.read_csv(input_file, sep = ';', header = 0)
             graph = nx.from_pandas_edgelist(df, 'from', 'to', edge_attr='strength')
             graph = nx.convert_node_labels_to_integers(graph)
+            edges = list(graph.edges())
+            m = len(edges)
 
             gtds_file = 'data/{0}/{0}-gtds.csv'.format(dataset_name)
             gtds = pd.read_csv(gtds_file, sep=';', header=0)
@@ -176,7 +178,7 @@ if __name__ == '__main__':
             if os.path.isfile(metrics_file):
                 exist_df = pd.read_pickle(metrics_file)
                 # when it does exist, and we're not overwriting then append the existing rows to the list
-                if overwrite == False:
+                if overwrite is False:
                     for row in range(exist_df.shape[0]):
                         curr_row = exist_df.loc[row, :].values.flatten().tolist()
                         metrics_list.append(curr_row)
@@ -186,9 +188,9 @@ if __name__ == '__main__':
             for tech in techniques:
                 tech_name = techniques[tech]['name']
                 layout_file = techniques[tech]['path']
-                print('file: {0}, technique: {1}'.format(layout_file, tech_name))
+                print('dataset: {0}, technique: {1}'.format(dataset_name, tech_name))
 
-                if overwrite == False:
+                if overwrite is False:
                     if tech in exist_techniques:
                         print('This technique was already computed, using existing computations (set overwrite to True if you want to recompute)')
                         continue
@@ -201,18 +203,15 @@ if __name__ == '__main__':
 
                 ns, cr, ar, nr, nn, ne, cn, ee, el, metrics_times = compute_metrics_old(df_layout, gtds, r, width, metrics_times)
 
-
-
                 # repeat for all views of a 3D layout:
-                metrics_views_list = []
-
                 views_file = layout_file.replace('3d.csv', 'views.pkl')
                 views = pd.read_pickle(views_file)['views'].to_numpy()
 
                 pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
                 start_parallel = time.time()
+                metrics_times_parr = dict(zip(constants.metrics, [0] * len(constants.metrics)))
                 try:
-                    parallel_metrics_with_gtds = partial(parallel_metrics_old, gtds=gtds, r = r, width = width, metrics_times = metrics_times)
+                    parallel_metrics_with_gtds = partial(parallel_metrics_old, gtds=gtds, r = r, width = width, metrics_times = metrics_times_parr)
                     res_iter = pool.map(parallel_metrics_with_gtds, [view for view in views])
                 except Exception as e:
                     print(e)
@@ -220,13 +219,14 @@ if __name__ == '__main__':
                     pool.join()
 
                 res_list = list(res_iter)
+
                 pool.close()
                 pool.join()
 
                 # each value was saved in a dict, so now we extract those values
                 test_parallel = [0] * len(views)
                 for i in range(len(views)):
-                    metrics_times = res_list[i]['metrics_times']
+                    metrics_times = {key: metrics_times.get(key, 0) + res_list[i]['metrics_times'].get(key, 0) for key in set(metrics_times) | set(res_list[i]['metrics_times'])}
                     test_parallel[i] = [res_list[i]['ns'], res_list[i]['cr'], res_list[i]['ar'], res_list[i]['nr'], res_list[i]['nn'], res_list[i]['ne'], res_list[i]['cn'], res_list[i]['ee'], res_list[i]['el']]
 
                 metrics_views_list = np.array(test_parallel)
@@ -241,6 +241,10 @@ if __name__ == '__main__':
                 df_metrics.to_pickle(metrics_file)
 
             print('Total time taken for current graph: ' + str(round(tot_time, 2)))
-            for key in metrics_times:
-                print('Time taken for metric ' + key + ': ' + str(round(metrics_times[key], 3)))
+            # for key in metrics_times:
+            #     print('Time taken for metric ' + key + ': ' + str(round(metrics_times[key], 3)))
+
+            if os.path.isfile('times/' + dataset_name + '.txt') is False:
+                with open('times/' + dataset_name + '.txt', 'w') as convert_file:
+                    convert_file.write(json.dumps(metrics_times))
 

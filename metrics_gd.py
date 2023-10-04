@@ -59,6 +59,61 @@ def crossing_res(coords, gtds):
     return cross_res
 
 
+def crossing_res_dev(coords, gtds):
+
+    adj_matrix = copy.deepcopy(gtds)
+    adj_matrix[adj_matrix > 1] = 0
+    graph = nx.from_numpy_array(adj_matrix)
+    graph = nx.convert_node_labels_to_integers(graph)
+
+    edges = list(graph.edges())
+    m = len(edges)
+
+    polys = [0] * m
+
+    # loop over all the edges
+    for i in range(m):
+        edge1 = edges[i]
+        # get the line of the first edge
+        c1 = [(coords[edge1[0]][0], coords[edge1[0]][1]), (coords[edge1[1]][0], coords[edge1[1]][1])]
+        polys[i] = sh.LineString(c1)
+
+    s = sh.STRtree(polys)
+
+    cross_angles = []
+
+    for i in polys:
+        i_coords = i.xy
+        res = s.query(i, predicate='crosses')
+        for j in res:
+            j_coords = polys[j].xy
+
+            x_diff_1 = (i_coords[1][0] - i_coords[0][0])
+            y_diff_1 = (i_coords[1][1] - i_coords[0][1])
+            x_diff_2 = (j_coords[1][1] - j_coords[0][1])
+            y_diff_2 = (j_coords[1][0] - j_coords[0][0])
+
+            # if we have a vertical line then slightly shift both lines
+            if (x_diff_1 == 0) or (x_diff_2 == 0):
+                x_diff_1 = 0.01
+                x_diff_2 = 0.01
+
+            slope1 = y_diff_1 / x_diff_1
+            slope2 = y_diff_2 / x_diff_2
+            angle = abs((slope2 - slope1) / (1 + slope1 * slope2))
+            deg_angle = np.arctan(angle) * 180 / np.pi
+
+            cross_angles.append(deg_angle)
+
+    # in case there are no crossings
+    if cross_angles:
+        cr = np.mean(np.array(cross_angles) / 90)
+    else:
+        cr = 1
+
+    return cr
+
+
 def crossings_number(coords, gtds):
 
     cnt = 0
@@ -81,11 +136,20 @@ def crossings_number(coords, gtds):
 
     s = sh.STRtree(polys)
 
+    # STRtree query with predicate crosses does not count incident edges nor the same edge object (2 identical edge with identical edge lengths) as a crossing
+    # so maximum number of crossings is not m^2 but:
+    # (m * (m - 1) / 2) the maximum number of total crossings (not including duplicate comparisons)
+    # minus 1/2 * sum(degrees * (degrees - 1))
     for i in polys:
         res = s.query(i, predicate = 'crosses')
         cnt += len(res)
 
-    return 1 - (cnt / (m**2))
+    end_cnt = cnt / 2 # duplicate comparisons done, divide by half to get the actual crossings
+    cr_poss = m * (m - 1) / 2
+    degrees = np.array(list(dict(graph.degree()).values()))
+    cr_imp = np.sum(degrees * (degrees - 1)) / 2
+
+    return 1 - (end_cnt / (cr_poss - cr_imp))
 
 
 def norm_stress(coords, gtds, stress_alpha = 2):
@@ -126,7 +190,8 @@ def edge_lengths_sd(coords, gtds):
 
     mu = np.mean(edge_dis)
 
-    el = np.sqrt(np.sum((edge_dis - mu)**2) / m)
+    # best edge length standard deviation is 0
+    el = 1 - (np.sqrt(np.sum((edge_dis - mu)**2) / m))
 
     return el
 
@@ -160,63 +225,30 @@ def node_resolution(coords):
     return nr
 
 
-def node_resolution_old(coords, tar_res):
-
-    # calculate the euclidean distances
-    eucl_dis = np.sqrt(np.sum(((np.expand_dims(coords, axis = 1) - coords) ** 2), 2))
-
-    # node resolution computation
-    # exclude zeros
-    eucl_dis = eucl_dis[np.nonzero(eucl_dis)]
-    # find values smaller than target resolution
-    mins = eucl_dis[eucl_dis < tar_res]
-
-    # .any() included in case there are no values smaller than target res
-    if mins.any():
-        nr = np.mean(eucl_dis[eucl_dis < tar_res] / tar_res)
-    else:
-        nr = 1
-
-    return nr
-
 def node_node_occl(coords, r = 0.01):
 
     # get the number of nodes
     n = np.shape(coords)[0]
 
-    # get the euclidean distance
-    eucl_dis = np.sqrt(np.sum(((np.expand_dims(coords, axis=1) - coords) ** 2), 2))
+    node_polys = [0] * n
 
-    # get a mask for circles that are within the sum of radii, these are the nodes that overlap
-    intersection_mask = np.less(eucl_dis, (2*r))
+    for i in range(n):
+        node_polys[i] = sh.Point(coords[i]).buffer(r)
 
-    # get the angle theta between the line connecting the centers and the x-axis
-    dx = np.subtract.outer(coords[:, 0], coords[:, 0])
-    dy = np.subtract.outer(coords[:, 1], coords[:, 1])
-    theta = np.arctan2(dy, dx)
+    s = sh.STRtree(node_polys)
 
-    # get the intersection area of the two nodes
-    intersection_area = np.where(intersection_mask, r**2 * (theta - np.sin(theta)) + r**2 * (np.pi - theta), 0)
+    areas = 0
+    node_area = np.pi * (r**2)
+    # compare each node with each other node
+    for i in range(len(node_polys)):
+        res = s.query(node_polys[i], predicate = 'intersects')
+        for j in res:
+            # exclude self intersects
+            if i != j:
+                curr_area = node_polys[i].intersection(node_polys[j]).area / node_area
+                areas += curr_area
 
-    # total area of a circle
-    total_area = 2 * np.pi * r**2
-
-    # get the intersection ratio
-    intersection_ratio = (intersection_area / total_area)
-
-    # nodes that perfectly overlap should be set to 1
-    intersection_ratio[intersection_ratio == 0.5] = 1
-    # nodes overlapping themselves do not count
-    np.fill_diagonal(intersection_ratio, 0)
-
-    # sum up the ratios and divide by the worst case scenario where every node is stacked ontop (exluding themselves),
-    #nn = np.sum(intersection_ratio) / (n**2 - n)
-
-    n_intersects = len(intersection_ratio > 0)
-    if n_intersects > 0:
-        nn = 1 - (np.sum(intersection_ratio) / n_intersects)
-    else:
-        nn = 1
+    nn = 1 - (areas / (n**2 - n))
 
     return nn
 
@@ -255,11 +287,9 @@ def node_edge_occl(coords, gtds, r, width):
     bottom_lefts = (np.array([x1s, y1s]) + offsets + r_off).T
     bottom_rights = (np.array([x2s, y2s]) + offsets - r_off).T
 
-    areas = 0
-
     node_polys = [0] * n
     edge_polys = [0] * m
-    # compare each node with each other edge
+
     for i in range(n):
         node_polys[i] = sh.Point(coords[i]).buffer(r)
 
@@ -269,20 +299,15 @@ def node_edge_occl(coords, gtds, r, width):
     s = sh.STRtree(edge_polys)
 
     intersect_cnt = 0
-    for i in node_polys:
-        res = s.query(i, predicate='intersects')
+    areas = 0
+    # compare each node with each other edge
+    for i in range(len(node_polys)):
+        res = s.query(node_polys[i], predicate = 'intersects')
         for j in res:
-            curr_area = i.intersection(edge_polys[j]).area / (i.area + edge_polys[j].area)
+            curr_area = node_polys[i].intersection(edge_polys[j]).area / (node_polys[i].area + edge_polys[j].area)
             areas += curr_area
-            if curr_area > 0:
-                intersect_cnt += 1
 
-    #ne = 1 - (areas / (n * m))
-
-    if intersect_cnt > 0:
-        ne = 1 - (areas / intersect_cnt)
-    else:
-        ne = 1
+    ne = 1 - (areas / (n * m))
 
     return ne
 
@@ -328,20 +353,15 @@ def edge_edge_occl(coords, gtds, r, width):
 
     s = sh.STRtree(rect_poly)
 
-    intersect_cnt = 0
-    for i in rect_poly:
-        res = s.query(i, predicate='intersects')
+    for i in range(len(rect_poly)):
+        res = s.query(rect_poly[i], predicate = 'intersects')
         for j in res:
-            curr_area = i.intersection(rect_poly[j]).area / (i.area + rect_poly[j].area)
-            areas += curr_area
-            if curr_area > 0:
-                intersect_cnt += 1
+            # exclude self intersects
+            if i != j:
+                curr_area = rect_poly[i].intersection(rect_poly[j]).area / (rect_poly[i].area + rect_poly[j].area)
+                areas += curr_area
 
-    #ee = 1 - (areas / (m**2))
-    if intersect_cnt > 0:
-        ee = 1 - (areas / intersect_cnt)
-    else:
-        ee = 1
+    ee = 1 - (areas / (m**2 - m))
 
     return ee
 
@@ -381,30 +401,29 @@ def angular_resolution(coords, gtds):
             # get the ordering and then get the angles of that specific ordering
             order_neighbs = compute_order(curr_node = nodes[i], neighbors = curr_neighbs, coords = coords)
             norm_sub = np.subtract(coords[order_neighbs, ].copy(), coords[nodes[i], ])
-            sub_phi = np.arctan2(norm_sub[:, 1:2], norm_sub[:, :1]) * 180 / np.pi
+            sub_phi = (np.arctan2(norm_sub[:, 1:2], norm_sub[:, :1]) * 180 / np.pi)
+            # get the degrees to positive 0-360
+            sub_phi = ((sub_phi + 360) % 360).flatten()
 
-            total = 360
+            # compare the last edge with the first edge
+            first = sub_phi[0]
+            last = sub_phi[-1]
+            angle = abs(first - last)
+
+            if angle < angle_res:
+                angle_res = angle
+
             # now compare each consecutive edge pair to get the smallest seen angle
             while len(sub_phi) >= 2:
                 first = sub_phi[0]
                 second = sub_phi[1]
 
-                # can simply subtract the angles in these cases
-                if (first >= 0 and second >= 0) or (first <= 0 and second <= 0) or (first >= 0 and second <= 0):
-                    angle = abs(first - second)
-                # have to add 360 for this case
-                elif (first < 0 and second > 0):
-                    angle = 360 + first - second
+                angle = abs(first - second)
 
                 if angle < angle_res:
                     angle_res = angle
-                total = total - angle
 
                 sub_phi = np.delete(sub_phi, 0)
-
-            # we forgot to compare the last edge with the first edge so we simply check the total angle left with the current min angle
-            if total < angle_res:
-                angle_res = total
 
     res = np.radians(angle_res) / (2 * np.pi / max_degr)
 
@@ -414,6 +433,64 @@ def angular_resolution(coords, gtds):
     #print('ar' + str(round(time.time() - start, 2)))
 
     return res
+
+
+def angular_resolution_dev(coords, gtds):
+
+    adj_matrix = copy.deepcopy(gtds)
+    adj_matrix[adj_matrix > 1] = 0
+    graph = nx.from_numpy_array(adj_matrix)
+    graph = nx.convert_node_labels_to_integers(graph)
+
+    # initialize variables
+    n = graph.number_of_nodes()
+    nodes = list(graph.nodes())
+
+    all_angles = []
+    # loop over all nodes
+    for i in range(n):
+        # only compute angles if there are at least 2 edges to a node
+        curr_degree = graph.degree(nodes[i])
+        smallest_angle = 360
+        if curr_degree > 1:
+            best_angle = 360 / curr_degree
+            curr_neighbs = list(graph.neighbors(nodes[i]))
+
+            # get the ordering and then get the angles of that specific ordering
+            order_neighbs = compute_order(curr_node = nodes[i], neighbors = curr_neighbs, coords = coords)
+            norm_sub = np.subtract(coords[order_neighbs, ].copy(), coords[nodes[i], ])
+            sub_phi = (np.arctan2(norm_sub[:, 1:2], norm_sub[:, :1]) * 180 / np.pi)
+            # get the degrees to positive 0-360
+            sub_phi = ((sub_phi + 360) % 360).flatten()
+
+
+            # compare the last edge with the first edge
+            first = sub_phi[0]
+            last = sub_phi[-1]
+            angle = abs(first - last)
+
+            # if the angle is smaller than 360 then save that as the new angle
+            if angle < smallest_angle:
+                smallest_angle = angle
+
+            # now compare each consecutive edge pair to get the smallest seen angle
+            while len(sub_phi) >= 2:
+                first = sub_phi[0]
+                second = sub_phi[1]
+
+                # if the angle is smaller than 360 then save that as the new angle
+                angle = abs(first - second)
+                if angle < smallest_angle:
+                    smallest_angle = angle
+
+                sub_phi = np.delete(sub_phi, 0)
+
+            # add the deviation of the smallest angle to the ideal angle to a list
+            all_angles.append(abs((best_angle - smallest_angle) / smallest_angle))
+
+    ar = 1 - np.mean(all_angles)
+
+    return ar
 
 
 """

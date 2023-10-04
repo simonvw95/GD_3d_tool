@@ -1,16 +1,8 @@
-from PyQt5.QtCore import QRectF
-from PyQt5.QtGui import QPainter, QFont
-from pyqtgraph.Qt import QtGui
-from pyqtgraph.opengl import shaders
-from pyqtgraph.opengl.shaders import ShaderProgram, VertexShader, FragmentShader
-
-import constants
-from visualizations.synced_camera_view_widget import SyncedCameraViewWidget
 import pyqtgraph.opengl as gl
-from matplotlib import cm
 import numpy as np
 import pyqtgraph as pg
-from OpenGL.GL import *
+from pyqtgraph.opengl.shaders import ShaderProgram, VertexShader, FragmentShader
+from visualizations.synced_camera_view_widget import SyncedCameraViewWidget
 
 
 class CustomScatterItem(gl.GLScatterPlotItem):
@@ -85,27 +77,19 @@ class CustomGraphItem(gl.GLGraphItem):
 
 
 class Graph3D(SyncedCameraViewWidget):
-    def __init__(self, data, labels, cmap, iscategorical, edges, parent=None, *args, **kwargs):
+    def __init__(self, data, cmap, edges, parent=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.data = data - (np.max(data) - np.min(data)) / 2  # Center the data around (0,0,0)
-        self.labels = labels
         self.parent = parent
         self.cmap = cmap
-        self.iscategorical = iscategorical
-        self.opts['distance'] = 110
+        self.opts['distance'] = 70
         #self.setCameraPosition(distance=1.8)
 
         self.color = np.empty((data.shape[0], 4))
-        if labels is None:
-            for i in range(data.shape[0]):
-                self.color[i] = self.cmap(0)
-        else:
-            for i in range(data.shape[0]):
-                if self.iscategorical:
-                    self.color[i] = self.cmap(self.labels[i])
-                else:
-                    self.color[i] = self.cmap(self.labels[i] / max(self.labels))
+        for i in range(data.shape[0]):
+            self.color[i] = self.cmap(0)
+
         sorted_indices = self.sorted_indices()
 
         self.edges = np.array(edges)
@@ -113,7 +97,7 @@ class Graph3D(SyncedCameraViewWidget):
         self.graph_item = CustomGraphItem(edges =self.edges, nodePositions = data, pxMode = True, edgeColor = pg.mkColor('black'), edgeWidth=3)
         self.addItem(self.graph_item)
 
-        self.scatter_item = CustomScatterItem(pos=data[sorted_indices], size=15, color=self.color[sorted_indices],
+        self.scatter_item = CustomScatterItem(pos=data[sorted_indices], size=10, color=self.color[sorted_indices],
                                               pxMode=True)
         self.scatter_item.setGLOptions('translucent')
         self.addItem(self.scatter_item)
@@ -131,9 +115,7 @@ class Graph3D(SyncedCameraViewWidget):
         distances /= np.max(distances)
         distances -= 1.0
 
-        # temp testing
         distances *= 2
-
         sorted_indices = np.argsort(distances)
         full = np.full((distances.shape[0], 4), np.array([0.35, 0.35, 0.35, 0]))
         color_adjustment = np.multiply(full, -distances[:, None])
@@ -143,8 +125,6 @@ class Graph3D(SyncedCameraViewWidget):
 
         self.scatter_item.setData(pos=self.data[sorted_indices],
                                   color=self.color[sorted_indices] + color_adjustment[sorted_indices])
-
-
 
     def sorted_indices(self):
         """
@@ -159,22 +139,12 @@ class Graph3D(SyncedCameraViewWidget):
         self.update_order()
         self.parent.highlight()
 
-    def set_data(self, data, labels, cmap, iscategorical, edges):
+    def set_data(self, data, cmap, edges):
         self.data = data - (np.max(data) - np.min(data)) / 2  # Center the data around (0,0,0)
-        self.labels = labels
         self.cmap = cmap
-        self.iscategorical = iscategorical
         self.color = np.empty((self.data.shape[0], 4))
-        if labels is None:
-            for i in range(self.data.shape[0]):
-                self.color[i] = self.cmap(0)
-        else:
-            for i in range(self.data.shape[0]):
-                if self.iscategorical:
-                    self.color[i] = self.cmap(self.labels[i])
-                else:
-                    m = max(self.labels)
-                    self.color[i] = self.cmap(self.labels[i] / m)
+        for i in range(self.data.shape[0]):
+            self.color[i] = self.cmap(0)
 
         self.edges = np.array(edges)
         self.graph_item.setData(edges=self.edges, nodePositions=self.data,
@@ -187,28 +157,28 @@ class Graph3D(SyncedCameraViewWidget):
 
     def paintGL(self):
         super(Graph3D, self).paintGL()
-        if self.labels is not None:
-            ulabels = np.unique(self.labels)
-            painter = QPainter(self)
-            font = QFont()
-            font_size = self.deviceHeight() / 30
-            font.setPixelSize(font_size)
-            painter.setFont(font)
-            painter.setPen(pg.mkPen())
-            painter.setPen(pg.mkPen('k'))
-            alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
-            for i, label in enumerate(ulabels):
-                if self.iscategorical:
-                    color = self.cmap(label, bytes=True)
-                else:
-                    color = self.cmap(label / max(self.labels), bytes=True)
-                painter.setBrush(pg.mkBrush(color))
-                painter.drawEllipse(self.deviceWidth() - 3.5 * font_size, 0.5 * font_size + i * 1.7 * font_size,
-                                    0.7 * font_size, 0.7 * font_size)
-                if self.iscategorical:
-                    text = alphabet[i]
-                else:
-                    text = str(label)
-                painter.drawText(self.deviceWidth() - 2.0 * font_size, 1.2 * font_size + i * 1.7 * font_size, text)
+        # if self.labels is not None:
+        #     ulabels = np.unique(self.labels)
+        #     painter = QPainter(self)
+        #     font = QFont()
+        #     font_size = self.deviceHeight() / 30
+        #     font.setPixelSize(font_size)
+        #     painter.setFont(font)
+        #     painter.setPen(pg.mkPen())
+        #     painter.setPen(pg.mkPen('k'))
+        #     alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
+        #     for i, label in enumerate(ulabels):
+        #         if self.iscategorical:
+        #             color = self.cmap(label, bytes=True)
+        #         else:
+        #             color = self.cmap(label / max(self.labels), bytes=True)
+        #         painter.setBrush(pg.mkBrush(color))
+        #         painter.drawEllipse(self.deviceWidth() - 3.5 * font_size, 0.5 * font_size + i * 1.7 * font_size,
+        #                             0.7 * font_size, 0.7 * font_size)
+        #         if self.iscategorical:
+        #             text = alphabet[i]
+        #         else:
+        #             text = str(label)
+        #         painter.drawText(self.deviceWidth() - 2.0 * font_size, 1.2 * font_size + i * 1.7 * font_size, text)
 
 

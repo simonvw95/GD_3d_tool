@@ -5,7 +5,7 @@ import numpy as np
 
 
 class Graph2D(pg.PlotWidget):
-    def __init__(self, data, labels, cmap, iscategorical, edges, title="2D Projection", *args, **kwargs):
+    def __init__(self, data, cmap, edges, title="2D Graph Drawing", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.hideAxis('left')
         self.hideAxis('bottom')
@@ -14,7 +14,6 @@ class Graph2D(pg.PlotWidget):
         self.setMouseEnabled(x=False, y=False)
         padding = 0.3
         self.cmap = cmap
-        self.iscategorical = iscategorical
 
         self.colors = pg.mkBrush(self.cmap(0, bytes=True))
         #self.getViewBox().setLimits(xMin=-0.5, xMax=1.5, yMin=np.min(data[:, 1]) - padding, yMax=np.max(data[:, 1]) + padding)
@@ -27,18 +26,10 @@ class Graph2D(pg.PlotWidget):
         self.line_item.setData(pos=data, adj=np.array(edges))
         self.addItem(self.line_item)
 
-    def set_data(self, data, labels, cmap, iscategorical, edges):
+    def set_data(self, data, edges):
 
         self.setMouseEnabled(x=False, y=False)
         self.edges = edges
-
-        # unq, count = np.unique(data.round(decimals = 6), axis=0, return_counts=True)
-        # repeated_groups = unq[count > 1]
-        # print(repeated_groups)
-        #
-        # for rp in repeated_groups:
-        #     idx = np.argwhere(np.all(np.isclose(data, rp, atol = 0.000001), axis = 1))[0][0]
-        #     data[idx, :] = data[idx, :] + 0.000001
 
         self.line_item.setData(pos=data, adj=np.array(self.edges))
 

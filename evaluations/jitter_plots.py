@@ -16,29 +16,6 @@ metrics = constants.metrics
 metrics_col_idx = dict(zip(constants.metrics, range(len(constants.metrics))))
 
 
-# first dataset, aggregated over technique e.g.: {'technique' : {'metric1 : [values], 'metric2' : [values]}}
-tech_ds = {}
-for tech in techniques:
-    res_dict = dict(zip(constants.metrics, ([] for _ in range(len(constants.metrics)))))
-    for i in range(len(data_frame)):
-        if (data_frame.iloc[i]['layout_technique'] == tech) and (data_frame.iloc[i]['n_components'] == 3):
-            for m in metrics:
-                col_idx = metrics_col_idx[m]
-                res_dict[m].append(sum(data_frame.iloc[i]['views_metrics'][:, col_idx] > data_frame.iloc[i][m]) / constants.samples * 100)
-    tech_ds[tech] = res_dict
-
-
-# second dataset, aggregated over technique but with all metrics in one list.: {'technique' : {'metrics : [valuesmetrics1, valuesmetrics2,..]}}
-# used in combination with labels
-tech_ds_cat = dict(zip(tech_ds.keys(), (0 for _ in range(len(tech_ds.keys())))))
-
-for tech in tech_ds:
-    app_list = []
-    for m in tech_ds[tech]:
-        app_list += tech_ds[tech][m]
-    tech_ds_cat[tech] = app_list
-
-
 # third dataset, aggregated over metric.: {'metric1' : {'technique1' : [values], 'technique2' : [values]}, 'metric2' : ..}
 metric_ds = {}
 for m in metrics:
@@ -101,6 +78,65 @@ for m in metrics:
     metric_ds_max_agg[m] = res_max
 
 
+# seventh dataset, aggregated over metric {'metric1' : [values], 'metric2' : ..}
+metric_ds_agg = {}
+for m in metrics:
+    col_idx = metrics_col_idx[m]
+    res = []
+    for tech in techniques:
+        for i in range(len(data_frame)):
+            if (data_frame.iloc[i]['n_components'] == 3) and (data_frame.iloc[i]['layout_technique'] == tech):
+                met_values = np.append(data_frame.iloc[i]['views_metrics'][:, col_idx], data_frame.iloc[i][m])
+                res.append(met_values)
+    metric_ds_agg[m] = np.array(res).flatten()
+
+
+# eighth dataset, aggregated over metric with distributions of metrics scaled to 0 and 1 {'metric1' : [values], 'metric2' : ..}
+metric_ds_agg_norm = {}
+for m in metrics:
+    col_idx = metrics_col_idx[m]
+    res = []
+    for tech in techniques:
+        for i in range(len(data_frame)):
+            if (data_frame.iloc[i]['n_components'] == 3) and (data_frame.iloc[i]['layout_technique'] == tech):
+                met_values = np.append(data_frame.iloc[i]['views_metrics'][:, col_idx], data_frame.iloc[i][m])
+                bounds = np.min(met_values), np.max(met_values)
+                scale_val = bounds[1] - bounds[0]
+                met_values = np.append(((data_frame.iloc[i]['views_metrics'][:, col_idx] - bounds[0]) / scale_val), ((data_frame.iloc[i][m] - bounds[0]) / scale_val))
+                res.append(met_values)
+    metric_ds_agg_norm[m] = np.array(res).flatten()
+
+
+# ninth dataset, aggregated over metric and subtracting the view values from the 2d value {'metric1' : [values], 'metric2' : ..}
+metric_ds_agg_rel = {}
+for m in metrics:
+    col_idx = metrics_col_idx[m]
+    res = []
+    for tech in techniques:
+        for i in range(len(data_frame)):
+            if (data_frame.iloc[i]['n_components'] == 3) and (data_frame.iloc[i]['layout_technique'] == tech):
+                met_values = data_frame.iloc[i]['views_metrics'][:, col_idx] - data_frame.iloc[i][m]
+                res.append(met_values)
+    metric_ds_agg_rel[m] = np.array(res).flatten()
+
+
+# tenth dataset, aggregated over metric and subtracting the view values from the 2d value, metric distributions scaled to 0 and 1 {'metric1' : [values], 'metric2' : ..}
+metric_ds_agg_rel_norm = {}
+for m in metrics:
+    col_idx = metrics_col_idx[m]
+    res = []
+    for tech in techniques:
+        for i in range(len(data_frame)):
+            if (data_frame.iloc[i]['n_components'] == 3) and (data_frame.iloc[i]['layout_technique'] == tech):
+                met_values = np.append(data_frame.iloc[i]['views_metrics'][:, col_idx], data_frame.iloc[i][m])
+                bounds = np.min(met_values), np.max(met_values)
+                scale_val = bounds[1] - bounds[0]
+                met_values = ((data_frame.iloc[i]['views_metrics'][:, col_idx] - bounds[0]) / scale_val) - ((data_frame.iloc[i][m] - bounds[0]) / scale_val)
+                res.append(met_values)
+    metric_ds_agg_rel_norm[m] = np.array(res).flatten()
+
+
+
 
 
 
@@ -120,7 +156,7 @@ for m in metrics:
     ax = plt.gca()
     ax.set_title('Layout technique comparison for ' + str(m))
     sns.stripplot(data=end_data, x='Layout technique', y='% of viewpoints better than 2d', size=5, ax=ax, jitter=0.10)
-    plt.savefig('evaluations/' + str(m) + '.png')
+    plt.savefig('evaluations/indiv_metric_' + str(m) + '.png')
     plt.clf()
     plt.close('all')
 
@@ -212,6 +248,87 @@ plt.close('all')
 
 
 #################################################################################################################################
+# layout technique on x axis, one plot for all metrics, all datapoints
+results_list = np.array([])
+categories = []
+for m in metric_ds_agg:
+    results_list = np.append(results_list, metric_ds_agg[m])
+    categories += [m] * len(metric_ds_agg[m])
+
+end_data = pd.DataFrame({'All metric values of all graphs, techniques, and viewpoints' : results_list, 'Metric' : categories})
+
+plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+plt.xticks(rotation=45, ha="right")
+ax = plt.gca()
+ax.set_title('Metric comparison')
+sns.stripplot(data=end_data, x='Metric', y='All metric values of all graphs, techniques, and viewpoints', size=5, ax=ax, jitter=0.10)
+plt.savefig('evaluations/all_values_agg_jitter.png')
+plt.clf()
+plt.close('all')
+
+
+#################################################################################################################################
+# layout technique on x axis, one plot for all metrics, all datapoints scaled between 0 and 1
+results_list = np.array([])
+categories = []
+for m in metric_ds_agg_norm:
+    results_list = np.append(results_list, metric_ds_agg_norm[m])
+    categories += [m] * len(metric_ds_agg_norm[m])
+
+end_data = pd.DataFrame({'All normalized metric values of all graphs, techniques, and viewpoints' : results_list, 'Metric' : categories})
+
+plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+plt.xticks(rotation=45, ha="right")
+ax = plt.gca()
+ax.set_title('Metric comparison')
+sns.stripplot(data=end_data, x='Metric', y='All normalized metric values of all graphs, techniques, and viewpoints', size=5, ax=ax, jitter=0.10)
+plt.savefig('evaluations/all_values_agg_norm_jitter.png')
+plt.clf()
+plt.close('all')
+
+
+#################################################################################################################################
+# layout technique on x axis, one plot for all metrics, all datapoints relative to the 2d layout
+results_list = np.array([])
+categories = []
+for m in metric_ds_agg_rel:
+    results_list = np.append(results_list, metric_ds_agg_rel[m])
+    categories += [m] * len(metric_ds_agg_rel[m])
+
+end_data = pd.DataFrame({'Difference between 2d layout and viewpoint values, for all graphs, techniques, and viewpoints' : results_list, 'Metric' : categories})
+
+plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+plt.xticks(rotation=45, ha="right")
+ax = plt.gca()
+ax.set_title('Metric comparison')
+sns.stripplot(data=end_data, x='Metric', y='Difference between 2d layout and viewpoint values, for all graphs, techniques, and viewpoints', size=5, ax=ax, jitter=0.10)
+plt.savefig('evaluations/all_values_agg_rel_jitter.png')
+plt.clf()
+plt.close('all')
+
+
+#################################################################################################################################
+# layout technique on x axis, one plot for all metrics, all datapoints relative to the 2d layout, all datapoints between 0 and 1
+results_list = np.array([])
+categories = []
+for m in metric_ds_agg_rel_norm:
+    results_list = np.append(results_list, metric_ds_agg_rel_norm[m])
+    categories += [m] * len(metric_ds_agg_rel_norm[m])
+
+end_data = pd.DataFrame({'Difference between 2d layout and normalized viewpoint values, for all graphs, techniques, and viewpoints' : results_list, 'Metric' : categories})
+
+plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+plt.xticks(rotation=45, ha="right")
+ax = plt.gca()
+ax.set_title('Metric comparison')
+sns.stripplot(data=end_data, x='Metric', y='Difference between 2d layout and normalized viewpoint values, for all graphs, techniques, and viewpoints', size=5, ax=ax, jitter=0.10)
+plt.savefig('evaluations/all_values_agg_rel_norm_jitter.png')
+plt.clf()
+plt.close('all')
+
+
+
+#################################################################################################################################
 # barchart with metric on x axis, each technique side by side with different colors,
 layout_technique_list = []
 results_list = []
@@ -231,7 +348,7 @@ ax.set_title('Metric comparison')
 g = sns.catplot(
     data=end_data, kind="bar",
     x="Metric", y="% of viewpoints better than 2d", hue="Layout technique",
-    errorbar="sd", palette=['red', 'blue', 'green', 'gray', 'black'], alpha=.6, height=6
+    errorbar="sd", palette=['red', 'blue', 'green', 'black', 'grey'], alpha=.6, height=6
 )
 g.despine(left=True)
 g.legend.set_title("")
@@ -272,8 +389,85 @@ plt.clf()
 plt.close('all')
 
 
+#################################################################################################################################
+# histogram for each metric, aggregated over each technique
+for m in metrics:
+
+    plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+    plt.xticks(rotation=45, ha="right")
+    ax = plt.gca()
+    ax.set_title('All datapoints of ' + str(m))
+    plt.hist(x = metric_ds_agg[m], bins = 100)
+    plt.xlabel('Metric value')
+    plt.ylabel('Frequency')
+    plt.savefig('evaluations/indiv_metric_histogram_' + str(m) + '.png')
+    plt.clf()
+    plt.close('all')
 
 
+#################################################################################################################################
+# boxplot for each metric
+results_list = []
+metric_list = []
+for m in metrics:
+    results_list += list(metric_ds_agg[m])
+    metric_list += [m] * len(metric_ds_agg[m])
+
+end_data = pd.DataFrame({'Metric values' : results_list, 'Metric' : metric_list})
+
+plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+plt.xticks(rotation = 45, ha = "right")
+ax = plt.gca()
+ax.set_title('Metric comparison of all datapoints')
+g = sns.boxplot(x="Metric", y="Metric values", data=end_data)
+sns.despine(offset=10, trim=True)
+ax.set_xticklabels(metrics)
+ax.set_xticklabels(ax.get_xticklabels(), rotation=30)
+plt.tight_layout()
+plt.savefig('evaluations/all_metrics_boxplot.png')
+plt.clf()
+plt.close('all')
+
+
+# same as above but now for the relative difference dataset
+#################################################################################################################################
+# histogram for each metric, aggregated over each technique
+for m in metrics:
+
+    plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+    plt.xticks(rotation=45, ha="right")
+    ax = plt.gca()
+    ax.set_title('All datapoints of ' + str(m))
+    plt.hist(x = metric_ds_agg_rel[m], bins = 100)
+    plt.xlabel('Metric value relative to their 2d values')
+    plt.ylabel('Frequency')
+    plt.savefig('evaluations/indiv_metric_rel_histogram_' + str(m) + '.png')
+    plt.clf()
+    plt.close('all')
+
+
+#################################################################################################################################
+# boxplot for each metric
+results_list = []
+metric_list = []
+for m in metrics:
+    results_list += list(metric_ds_agg_rel[m])
+    metric_list += [m] * len(metric_ds_agg_rel[m])
+
+end_data = pd.DataFrame({'Metric values' : results_list, 'Metric' : metric_list})
+
+plt.figure(figsize=(1000 / 96, 1000 / 96), dpi=96)
+plt.xticks(rotation = 45, ha = "right")
+ax = plt.gca()
+ax.set_title('Metric comparison of all datapoints relative to their 2d values')
+g = sns.boxplot(x="Metric", y="Metric values", data=end_data)
+sns.despine(offset=10, trim=True)
+ax.set_xticklabels(metrics)
+ax.set_xticklabels(ax.get_xticklabels(), rotation=30)
+plt.tight_layout()
+plt.savefig('evaluations/all_metrics_boxplot_rel.png')
+plt.clf()
+plt.close('all')
 
 
 
