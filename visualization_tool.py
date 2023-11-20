@@ -15,6 +15,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QPushButton, QSlider
 from pyqtgraph import mkPen
 from matplotlib import cm
+from matplotlib.colors import LinearSegmentedColormap
 from functools import partial
 
 # script imports
@@ -28,7 +29,7 @@ from visualizations.parallel_bar_plot import parallelBarPlot
 
 
 class Tool(pg.GraphicsWindow):
-    def __init__(self, dataset_name="grafo10231", default_layout_technique="FA2", analysis_data=None):
+    def __init__(self, dataset_name="grafo10231", default_layout_technique="FA2", default_proj_choice = 'global norm', analysis_data=None):
         super(Tool, self).__init__()
 
         keyboard.on_press(self.keyboard_event)
@@ -36,6 +37,7 @@ class Tool(pg.GraphicsWindow):
         # data
         self.dataset_name = dataset_name
         self.default_layout_technique = default_layout_technique
+        self.proj_choice = default_proj_choice
         self.view_locked = False
 
         # Grid initialization of the window
@@ -64,8 +66,22 @@ class Tool(pg.GraphicsWindow):
 
         # get the view points and initialize the starting metric and some variables
         self.view_points = np.load(f'spheres/sphere{constants.samples}_points.npy')
+        # get the minima and maxima of all the quality metrics
+        bounds_dict = constants.bounds_dict
+        self.mins_global = np.array(list(bounds_dict.values()))[:, 0]
+        self.maxs_global = np.array(list(bounds_dict.values()))[:, 1]
+        # get the minimum and maximum of the averages of all the 9 quality metrics combined
+        self.global_average_min = constants.glob_averages_min
+        self.global_average_max = constants.glob_averages_max
+
+        # create the default colors for the heatmap
+        self.heatmap_colors = ["darkred", "red", "yellow", "green", "lightblue"]
+        # create the default color mapping for the projection
+        self.proj_cmap = LinearSegmentedColormap.from_list("", self.heatmap_colors)
+
         self.D_P_dict = self.available_datasets_layouts()
         self.current_metric = 'crossing_number'
+        self.curr_viewpoint = None
         self.initialize_menu()
         self.graph_2d = None
         self.graph_3d = None
@@ -93,6 +109,8 @@ class Tool(pg.GraphicsWindow):
     def initialize_menu(self):
 
         self.menu = pg.LayoutWidget()
+        # width_policy = QtWidgets.QSizePolicy()
+        # width_policy.setHorizontalPolicy(QtWidgets.QSizePolicy.MinimumExpanding)
 
         # Set background white:
         palette = QtGui.QPalette()
@@ -127,9 +145,16 @@ class Tool(pg.GraphicsWindow):
             self.metric_picker = pg.ComboBox(items = constants.metrics + ['Weighted sum of metrics (norm)', 'Weighted sum of metrics (raw)'], default = self.current_metric)
             self.metric_picker.currentIndexChanged.connect(self.data_selected)
 
+            # create a drop down list to pick different versions of the quality metrics projection plot
+            self.projection_picker = pg.ComboBox(items = ['Local norm', 'global norm'], default = 'global norm')
+            self.projection_picker.currentIndexChanged.connect(self.change_proj_type)
+
             # add a few labels indicating what each drop down list does
             self.menu.addLabel(text="Dataset:", row=len(self.menu.rows), col=0)
             self.menu.addWidget(self.dataset_picker, len(self.menu.rows), 0)
+            self.menu.addLabel(text="Projection type:", row=len(self.menu.rows), col=1)
+            self.menu.addWidget(self.projection_picker, len(self.menu.rows), 1)
+
             self.menu.addLabel(text="Layout technique:", row=len(self.menu.rows), col=0)
             self.menu.addWidget(self.layout_technique_picker, len(self.menu.rows), 0)
             self.menu.addLabel(text="Quality Metric:", row=len(self.menu.rows), col=0)
@@ -150,10 +175,10 @@ class Tool(pg.GraphicsWindow):
             self.menu.addWidget(self.select_button, len(self.menu.rows), 0)
             self.select_button.setVisible(True)
 
-            # deprecated, adds a button that finds the best solution when scores are normalized
-            # self.best_solution_button = QPushButton('Find best solution (norm)')
-            # self.best_solution_button.pressed.connect(self.get_best_solution)
-            # self.menu.addWidget(self.best_solution_button, len(self.menu.rows), 0)
+            # adds a button that finds the best solution when scores are normalized
+            self.best_solution_button = QPushButton('Find best solution (norm)')
+            self.best_solution_button.pressed.connect(self.get_best_solution)
+            self.menu.addWidget(self.best_solution_button, len(self.menu.rows), 0)
 
             # adds a button that finds the best solution with raw values
             self.best_solution_button_raw = QPushButton('Find best solution')
@@ -196,6 +221,7 @@ class Tool(pg.GraphicsWindow):
 
                 # create the sliders
                 self.sliders[i] = QSlider(Qt.Horizontal)
+                # self.sliders[i].setSizePolicy(width_policy)
                 self.sliders[i].setMinimum(0)
                 self.sliders[i].setMaximum(100)
                 self.sliders[i].setValue(100)
@@ -352,16 +378,16 @@ class Tool(pg.GraphicsWindow):
         # self.prefer_2d.setVisible(self.view_locked)
 
     # function for displaying the viewpoint with the best weighted solution with normalized metric values
-    # def get_best_solution(self):
-    #
-    #     curr_views_metrics = copy.deepcopy(self.views_metrics)
-    #     for i in range(self.n_metrics):
-    #         curr_views_metrics[:, i] *= (self.weights[i] / 100)
-    #
-    #     best_view = np.argmax(np.sum(curr_views_metrics, axis = 1))
-    #     view = self.view_points[best_view]
-    #
-    #     self.move_to_viewpoint(view)
+    def get_best_solution(self):
+
+        curr_views_metrics = copy.deepcopy(self.views_metrics)
+        for i in range(self.n_metrics):
+            curr_views_metrics[:, i] *= (self.weights[i] / 100)
+
+        best_view = np.argmax(np.sum(curr_views_metrics, axis = 1))
+        view = self.view_points[best_view]
+
+        self.move_to_viewpoint(view)
 
     # function for displaying the viewpoint with the best weighted solution with raw values
     def get_best_solution_raw(self):
@@ -382,8 +408,6 @@ class Tool(pg.GraphicsWindow):
         layout_file_3d = F"{constants.output_dir}/{self.dataset_name}-{self.default_layout_technique}-3d.csv"
         input_file = glob('data/{0}/*-src.csv'.format(self.dataset_name))[0]
         data = pd.read_csv(layout_file_3d, sep=';').to_numpy()
-
-        print(input_file)
 
         # get the graph object and edges
         df = pd.read_csv(input_file, sep=';', header=0)
@@ -432,6 +456,7 @@ class Tool(pg.GraphicsWindow):
     def initialize_sphere(self, sphere_sum = None):
 
 
+        double_bar = False
         # # add the viewpoint quality metric data to the sphere
         if sphere_sum == 'Weighted sum of metrics (raw)':
             # weight the raw metric values
@@ -452,11 +477,13 @@ class Tool(pg.GraphicsWindow):
             mins, maxs = np.min(weight_sum), np.max(weight_sum)
             self.sphere_data = (weight_sum - mins) / (maxs - mins)
         else:
+            double_bar = True
             self.sphere_data = np.copy(self.views_metrics[:, constants.metrics.index(self.current_metric)])
+            min_color_bar = np.min(self.original_metrics_views[:, constants.metrics.index(self.current_metric)])
+            max_color_bar = np.max(self.original_metrics_views[:, constants.metrics.index(self.current_metric)])
 
-
-        c = ["darkred", "red", "yellow", "green", "darkgreen"]
-        v = [ 0, 0.2, 0.5, 0.8, 1]
+        c = self.heatmap_colors
+        v = [0, 0.25, 0.5, 0.75, 1]
         self.heatmap = pg.ColorMap(v, c)
 
         if sphere_sum:
@@ -481,8 +508,25 @@ class Tool(pg.GraphicsWindow):
         self.color_bar.addLine(y=np.min(self.sphere_data) * 255, pen=mkPen(255, 255, 255, width=2))
         self.color_bar_line = self.color_bar.addLine(y=255, pen=mkPen(0,0,0,255))
 
+        # if double_bar:
+        #     # cbw2 = pg.GraphicsLayoutWidget()
+        #     start, stop, step = min_color_bar, max_color_bar, (max_color_bar - min_color_bar) / 4
+        #     v2 = list(np.arange(start, stop + step / 2, step))
+        #     heatmap2 = pg.ColorMap(v2, c)
+        #
+        #     color_bar2 = pg.ColorBarItem(colorMap=heatmap2, interactive=False, values=(min_color_bar, max_color_bar))
+        #
+        #     # display max, min and current metric value with a horizontal line
+        #     color_bar2.addLine(y=max_color_bar * 255, pen=mkPen(255, 255, 255, width=2))
+        #     color_bar2.addLine(y=min_color_bar * 255, pen=mkPen(255, 255, 255, width=2))
+        #     color_bar_line2 = color_bar2.addLine(y=255, pen=mkPen(0, 0, 0, 255))
+        #     self.cbw.addItem(color_bar2, row = 0, col = 0)
+        #     # cbw.setBackground('w')
+        #     # self.sphere_widget.addWidget(cbw2, 0, 2)
+        #     # cbw.setSizePolicy(self.sphere.sizePolicy())
+
         # add the color bar to the side
-        self.cbw.addItem(self.color_bar)
+        self.cbw.addItem(self.color_bar, row = 0, col = 1)
         self.cbw.setBackground('w')
         self.sphere_widget.addWidget(self.cbw, 0, 1)
         self.sphere_widget.layout.setColumnStretch(1, 1)
@@ -513,10 +557,14 @@ class Tool(pg.GraphicsWindow):
             self.layoutgb.addWidget(self.hist, 1, 2)
 
     # initialize the projection of the metric space
-    def initialize_metric_proj(self):
+    def initialize_metric_proj(self, proj_choice):
 
-        # get the data
-        data = pd.read_pickle(F"{constants.metrics_projects_dir}/{self.dataset_name}_projcs.pkl")
+        # get the data, local normalization projection or global normalization projection
+        name = F"{constants.metrics_projects_dir}/{self.dataset_name}_projcs_local.pkl"
+        if proj_choice[0:6] == 'global':
+            name = F"{constants.metrics_projects_dir}/{self.dataset_name}_projcs_global.pkl"
+        data = pd.read_pickle(name)
+
         curr_row = data[data['layout_technique'] == self.default_layout_technique]
         proj_data = curr_row['projection'].to_numpy()[0]
 
@@ -528,17 +576,23 @@ class Tool(pg.GraphicsWindow):
         if scale_val == 0.0:
             scale_val = 1
 
-        #  normalize the data
+        #  normalize the data (the points on the scatterplot so that they're between 0 and 1)
         proj_data -= curr_min
         proj_data /= scale_val
         self.proj_data = proj_data
 
+        coloring_norm = self.avg_met_vals_local
+        if proj_choice[0:6] == 'global':
+            coloring_norm = self.avg_met_vals_global
+
+        self.coloring_norm_proj = coloring_norm
+
         if self.metric_proj is None:
-            self.metric_proj = Scatter2D(proj_data, self.cmap, parent=self)
+            self.metric_proj = Scatter2D(proj_data, coloring_norm, self.proj_cmap, parent=self)
             self.metric_proj.setBackground('w')
             self.layoutgb.addWidget(self.metric_proj, 0, 3)
         else:
-            self.metric_proj.set_data(proj_data, self.cmap)
+            self.metric_proj.set_data(proj_data, coloring_norm, self.proj_cmap, self.nearest_viewpoint_idx)
 
     def initialize_stats(self):
 
@@ -623,7 +677,7 @@ class Tool(pg.GraphicsWindow):
             metric_score = nearest_values[constants.metrics.index(self.current_metric)]
             self.color_bar_line.setValue(255 * metric_score)
 
-            self.metric_proj.set_data(self.proj_data, self.cmap, self.nearest_viewpoint_idx)
+            self.metric_proj.set_data(self.proj_data, self.coloring_norm_proj, self.proj_cmap, self.nearest_viewpoint_idx)
 
             # deprecated but may be used in the future for user study
             if constants.user_mode != 'free':
@@ -654,6 +708,7 @@ class Tool(pg.GraphicsWindow):
 
     # move to a certain viewpoint based on the sphere rotation, updates the 3d graph layout and sphere
     def move_to_viewpoint(self, viewpoint):
+        self.curr_viewpoint = viewpoint
         viewpoint_spherical = utils.rectangular_to_spherical(np.array([viewpoint]))[0]
         self.sphere.setCameraPosition(azimuth=viewpoint_spherical[1], elevation=viewpoint_spherical[0],
                                       distance=self.sphere.cameraParams()['distance'])
@@ -668,6 +723,10 @@ class Tool(pg.GraphicsWindow):
         layout_technique = self.layout_technique_picker.value()
         self.set_data(dataset_name, layout_technique)
         self.metric_selected(self.metric_picker.value())
+
+    def change_proj_type(self):
+        self.proj_choice = self.projection_picker.value()
+        self.initialize_metric_proj(self.proj_choice)
 
     # attached to the metric selection drop down menu, selects the metric
     def metric_selected(self, metric):
@@ -714,23 +773,40 @@ class Tool(pg.GraphicsWindow):
         self.n_metrics = np.shape(self.views_metrics)[1]
 
         # normalization step: for each quality metric, the lowest seen value of all views is set to be the lowest point (0), then the highest
-        # seen value of all views is set to the highest point (1)
+        # seen value of all views is set to the highest point (1), local normalization
+        # global normalization is when we normalize according to all seen values from all views from all datasets and techniques
         self.original_qms = copy.deepcopy(self.metrics_2d)
         self.original_metrics_views = copy.deepcopy(np.array(self.views_metrics))
+        self.views_metrics_global = copy.deepcopy(np.array(self.views_metrics))
+        self.metrics_2d_global = copy.deepcopy(self.metrics_2d)
 
         qm_idx = dict(zip(range(len(self.metrics_2d)), self.metrics_2d))
         for key, val in qm_idx.items():
             temp_array = np.append(self.views_metrics[:, key], val)
-            curr_min = np.min(temp_array)
-            scale_val = np.max(temp_array - curr_min)
+            curr_min_local = np.min(temp_array)
+            scale_val_local = np.max(temp_array - curr_min_local)
 
             # extra check, if we only have values of 0 then we set the scale to 1, to avoid / 0
-            if scale_val == 0.0:
-                scale_val = 1
+            if scale_val_local == 0.0:
+                scale_val_local = 1
 
-            self.views_metrics[:, key] = (self.views_metrics[:, key] - curr_min) / scale_val
-            self.metrics_2d[key] = (self.metrics_2d[key] - curr_min) / scale_val
-            self.metrics_3d[key] = (self.metrics_3d[key] - curr_min) / scale_val
+            curr_min_global = self.mins_global[key]
+            curr_max_global = self.maxs_global[key]
+            scale_val_global = curr_max_global - curr_min_global
+
+            self.views_metrics[:, key] = (self.views_metrics[:, key] - curr_min_local) / scale_val_local
+            self.views_metrics_global[:, key] = (self.views_metrics_global[:, key] - curr_min_global) / scale_val_global
+            self.metrics_2d[key] = (self.metrics_2d[key] - curr_min_local) / scale_val_local
+            self.metrics_2d_global[key] = (self.metrics_2d_global[key] - curr_min_global) / scale_val_global
+            self.metrics_3d[key] = (self.metrics_3d[key] - curr_min_local) / scale_val_local
+
+        # now all of our metric values are scaled locally or globally
+        # we want the averages of these metrics across all viewpoints in order to color them
+        self.avg_met_vals_local = np.mean(np.vstack((self.views_metrics, self.metrics_2d)), axis = 1)
+        # to compare the global averages we want the distribution of the global averages to be the same, so we normalize these again
+        # using the minimum and maximum average seen of all layouts (global min and max of all averages)
+        self.avg_met_vals_global = np.mean(np.vstack((self.views_metrics_global, self.metrics_2d_global)), axis = 1)
+        self.avg_met_vals_global = (self.avg_met_vals_global - self.global_average_min) / (self.global_average_max - self.global_average_min)
 
         # initialize all the layouts, plots etc.
         self.initialize_3d_layout()
@@ -738,7 +814,7 @@ class Tool(pg.GraphicsWindow):
 
         self.initialize_histogram()
         self.initialize_sphere()
-        self.initialize_metric_proj()
+        self.initialize_metric_proj(self.proj_choice)
         self.initialize_stats()
         self.graph_3d.update_views()
         self.highlight()

@@ -77,7 +77,7 @@ class QualitySphere(SyncedCameraViewWidget):
         if constants.show_user_picked_viewpoints:
             data = parent.analysis_data.where((parent.analysis_data['projection_method'] == parent.default_layout_technique) &
                                               (parent.analysis_data['dataset'] == parent.dataset_name))
-            viewpoints_with_tool =  data.loc[data['mode'] == 'eval_full']['viewpoint'].to_numpy()
+            viewpoints_with_tool = data.loc[data['mode'] == 'eval_full']['viewpoint'].to_numpy()
             viewpoints_with_tool = np.array([p for p in viewpoints_with_tool])
             viewpoints_with_tool /= np.reshape(np.sqrt(np.sum(np.square(viewpoints_with_tool), axis=1)), (viewpoints_with_tool.shape[0], 1)) * 0.96
             viewpoints_without_tool = data.loc[data['mode'] == 'eval_half']['viewpoint'].to_numpy()
@@ -95,12 +95,16 @@ class QualitySphere(SyncedCameraViewWidget):
             self.setWindowOpacity(0)
         super(QualitySphere, self).paintGL()
 
-        #Draw crosshair
+        screen_width = self.frameGeometry().width()
+        screen_height = self.frameGeometry().height()
+
+        # draw crosshair
         painter = QPainter(self)
         painter.setPen(pg.mkPen('k'))
         painter.setBrush(pg.mkBrush('k'))
-        painter.drawLine(self.deviceWidth() / 3 -3, self.deviceHeight() / 3, self.deviceWidth() / 3 +3, self.deviceHeight() / 3)
-        painter.drawLine(self.deviceWidth() / 3 +0.5, self.deviceHeight() / 3 -3, self.deviceWidth() / 3 +0.5, self.deviceHeight() / 3 + 3)
+        painter.drawLine(screen_width / 2 - 3, screen_height / 2, screen_width / 2 + 3, screen_height / 2)
+        painter.drawLine(screen_width / 2, screen_height / 2 - 3, screen_width / 2, screen_height / 2 + 3)
+
 
     def save_image(self):
         QtCore.QTimer.singleShot(1000, lambda: self.readQImage().save("fileName.png"))

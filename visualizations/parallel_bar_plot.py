@@ -133,12 +133,12 @@ class parallelBarPlot(pg.PlotWidget):
         self.title = title
         self.label = QLabel(self.title, self.viewport())
         self.cmap = cm.get_cmap('tab10')
-        self.max_points_in_bin = 0 #Defined later, and used to determine where to draw the polylines on hover
+        self.max_points_in_bin = 0  # Defined later, and used to determine where to draw the polylines on hover
         self.lock = False
         if constants.user_mode == 'eval_half':
             self.setVisible(False)
 
-        #References to the poyline objects
+        # References to the poyline objects
         self.lines = None
         self.highlight_line = None
 
@@ -154,7 +154,7 @@ class parallelBarPlot(pg.PlotWidget):
             hist = np.histogram(self.views_metrics[:, metric_index], self.nr_bins, range=self.x_range)
             self.max_points_in_bin = max(self.max_points_in_bin, np.max(hist[0]))
             self.histograms.append(hist)
-        self.metric_texts = [] #Store references to the text items to change the metric values
+        self.metric_texts = []  # Store references to the text items to change the metric values
         self.initialize()
         self.draw_histograms()
 
@@ -165,7 +165,7 @@ class parallelBarPlot(pg.PlotWidget):
         self.getViewBox().setYRange(-0.2, self.h_gap * len(self.histograms))
         self.getViewBox().setMouseEnabled(x=False, y=False)
 
-        #Write metric names in the top left corner of each histogram
+        # Write metric names in the top left corner of each histogram
         if constants.user_mode != "image" and constants.user_mode != 'evalimage':
             for metric in range(len(self.histograms)):
                 text = constants.metrics[metric]
@@ -186,7 +186,6 @@ class parallelBarPlot(pg.PlotWidget):
         # self.views_metrics = self.views_metrics - mins # mins.reshape((4,1))
         # self.views_metrics = self.views_metrics * scale
         self.views_metrics = self.views_metrics.astype(float)
-        #print()
 
     def draw_histograms(self):
         self.rect_reference = {}
@@ -255,7 +254,7 @@ class parallelBarPlot(pg.PlotWidget):
         for i, text in enumerate(self.metric_texts):
 
             text.setText(
-                F"{constants.metrics[i]}: {'viewpoint value: ' + str(round(original_values[i], 5))}")
+                F"{constants.metrics[i]}: {'viewpoint value (normalized): ' + str(round(original_values[i], 5)) + ' (' + str(round(metric_values[i], 5)) + ')'}")
 
     def on_rect_click(self, rect, percentage):
         if self.lock or constants.user_mode == 'evalimage':

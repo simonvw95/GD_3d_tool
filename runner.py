@@ -14,7 +14,9 @@ from layout_techniques.fa2 import run_fa2
 from wakepy import keepawake
 
 technique_names = {
-                    'A': ['SM', 'pivot_mds', 'FA2', 'tsNET', 'tsNETstar']
+                    'A': ['SM', 'pivot_mds', 'FA2', 'tsNET', 'tsNETstar'],
+                    'B': ['SM', 'pivot_mds'],
+                    'C': ['SM']
                 }
 
 
@@ -69,10 +71,12 @@ if __name__ == '__main__':
         # manual
         #all_dataset_names = ['EVA']
         # automatic every dataset
-        all_dataset_names = os.listdir('data/')
-        all_dataset_names.remove('3elt')
+        # all_dataset_names = os.listdir('data/')
+        all_dataset_names = os.listdir('rome_final/')
+        # all_dataset_names.remove('3elt')
         # layout technique selection, see above
-        selection = 'A'
+        # selection = 'A'
+        selection = 'C'
 
         # get the perplexities for tsnet
         perplx = constants.perplexities
@@ -83,7 +87,7 @@ if __name__ == '__main__':
         for dataset_name in all_dataset_names:
 
             print('Working on ' + str(dataset_name))
-            input_file = glob('data/{0}/*-src.csv'.format(dataset_name))[0]
+            input_file = glob('rome_final/{0}/*-src.csv'.format(dataset_name))[0]
 
             df = pd.read_csv(input_file, sep=';', header=0)
             graph = nx.from_pandas_edgelist(df, 'from', 'to', edge_attr = 'strength')
@@ -91,7 +95,7 @@ if __name__ == '__main__':
 
             selected_layouts = technique_names[selection]
 
-            gtds_file = 'data/{0}/{0}-gtds.csv'.format(dataset_name)
+            gtds_file = 'rome_final/{0}/{0}-gtds.csv'.format(dataset_name)
             if not os.path.isfile(gtds_file):
                 print('Creating and saving the gtds')
                 # save the graph theoretic shortest distances
@@ -102,11 +106,12 @@ if __name__ == '__main__':
 
             header = ['x', 'y', 'z']
 
-            for n_components in [2, 3]:
+            # for n_components in [2, 3]:
+            for n_components in [2]:
 
                 for lay_name in selected_layouts:
 
-                    output_file = os.path.join(constants.output_dir, '{0}-{1}-{2}d.csv'.format(dataset_name, lay_name, n_components))
+                    output_file = os.path.join('layouts_rome2d/', '{0}-{1}-{2}d.csv'.format(dataset_name, lay_name, n_components))
 
                     # if it doesnt exist
                     if not os.path.isfile(output_file) or overwrite:

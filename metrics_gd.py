@@ -130,7 +130,7 @@ def crossings_number(coords, gtds):
     # loop over all the edges
     for i in range(m):
         edge1 = edges[i]
-        # get the line of the first edge
+        # get a line object
         c1 = [(coords[edge1[0]][0], coords[edge1[0]][1]), (coords[edge1[1]][0], coords[edge1[1]][1])]
         polys[i] = sh.LineString(c1)
 
@@ -486,7 +486,7 @@ def angular_resolution_dev(coords, gtds):
                 sub_phi = np.delete(sub_phi, 0)
 
             # add the deviation of the smallest angle to the ideal angle to a list
-            all_angles.append(abs((best_angle - smallest_angle) / smallest_angle))
+            all_angles.append(abs((best_angle - smallest_angle) / best_angle))
 
     ar = 1 - np.mean(all_angles)
 
