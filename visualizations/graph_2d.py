@@ -30,7 +30,6 @@ class Graph2D(pg.PlotWidget):
 
         self.setMouseEnabled(x=False, y=False)
         self.edges = edges
-
         self.line_item.setData(pos=data, adj=np.array(self.edges))
 
     def paintEvent(self, ev):

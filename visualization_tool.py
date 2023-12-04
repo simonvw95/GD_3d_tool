@@ -619,7 +619,7 @@ class Tool(pg.GraphicsWindow):
             labels_stats[constants.metrics[i] + '_h'] = self.stats.addLabel(text=': 2d value ' + str(
                 round(self.original_qms[i], 5)) + ' | best 3d value ' + str(round(best_res, 5)),
                                                                      row=len(self.stats.rows), col=0)
-            labels_stats[constants.metrics[i] + '_j'] = self.stats.addLabel(text = str(round(better_raw_viewpoints_perc, 3)) + '% of viewpoints are better than 2d value| best viewpoint is ' + str(round(best_res_how_much_better, 3)) + ' better', row = len(self.stats.rows), col = 0)
+            labels_stats[constants.metrics[i] + '_j'] = self.stats.addLabel(text = str(round(better_raw_viewpoints_perc, 3)) + '% of viewpoints are better than 2d value | best viewpoint is ' + str(round(best_res_how_much_better, 3)) + ' better', row = len(self.stats.rows), col = 0)
 
         self.layoutgb.addWidget(self.stats, 1, 3)
 

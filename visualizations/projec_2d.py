@@ -28,10 +28,10 @@ class Scatter2D(pg.PlotWidget):
             idx = np.argmin(abs(color_range - avg_metric_vals[i]))
             temp_colors[i] = pg.mkBrush(self.cmap(idx, bytes = True))
 
-        self.scatter_item = pg.ScatterPlotItem(size=3, pen=pg.mkPen(0,0,0,50), hoverable=True, pxMode = True, hoverSize = 8, hoverSymbol = 'crosshair', hoverBrush = 'yellow')
+        self.scatter_item = pg.ScatterPlotItem(size=3, pen=pg.mkPen(0,0,0,50), hoverable=True, pxMode = True, hoverSize = 12, hoverSymbol = 'crosshair', hoverBrush = 'yellow')
 
         self.symbol_list = ['o'] * constants.samples + ['crosshair']
-        self.size_list = [3] * constants.samples + [8]
+        self.size_list = [7] * constants.samples + [12]
         self.color_list = temp_colors
         self.color_list[-1] = pg.mkBrush('black')
 
@@ -62,9 +62,9 @@ class Scatter2D(pg.PlotWidget):
         temp_colors[-1] = 'black'
         temp_colors[nearest_viewpoint_idx] = 'yellow'
         symbol_list = ['o'] * constants.samples + ['crosshair']
-        size_list = [3] * constants.samples + [8]
+        size_list = [7] * constants.samples + [12]
         symbol_list[nearest_viewpoint_idx] = 'crosshair'
-        size_list[nearest_viewpoint_idx] = 8
+        size_list[nearest_viewpoint_idx] = 12
 
         self.scatter_item.setData(pos=data, brush= temp_colors, pen=pg.mkPen(0, 0, 0, 50), data = avg_metric_vals)
         self.scatter_item.setSymbol(symbol_list)

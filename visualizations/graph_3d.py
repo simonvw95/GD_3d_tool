@@ -122,7 +122,6 @@ class Graph3D(SyncedCameraViewWidget):
 
         self.graph_item.setData(edges=self.edges,
                                 nodePositions=self.data)  # , nodeColor = self.color[sorted_indices] + color_adjustment[sorted_indices], size = 7)
-
         self.scatter_item.setData(pos=self.data[sorted_indices],
                                   color=self.color[sorted_indices] + color_adjustment[sorted_indices])
 

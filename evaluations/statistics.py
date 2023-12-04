@@ -598,3 +598,51 @@ print(scipy.stats.wilcoxon(best, third, alternative = 'greater'))
 print(scipy.stats.wilcoxon(best, fourth, alternative = 'greater'))
 
 
+####################################################################################################################
+import constants
+import os
+import numpy as np
+import pandas as pd
+import networkx as nx
+import seaborn as sns
+import matplotlib.pyplot as plt
+from math import comb
+# some descriptive statistics for graphs
+densities_all = {}
+densities_rome = {}
+n_rome = {}
+m_rome = {}
+degree_avg = {}
+degree_avg_rome = {}
+tsnet_graphs = ['dwt_72', 'lesmis', 'can_96', 'rajat11', 'jazz', 'visbrazil', 'grid17', 'mesh3e1', 'netscience', 'dwt_419', 'price_1000', 'dwt_1005', 'cage8', 'bcsstk09', 'block_2000', 'sierpinski3d', 'CA-GrQc', 'EVA', '3elt', 'us_powergrid']
+own_graphs_n = {}
+own_graphs_m = {}
+own_graphs_deg = {}
+own_graphs_density = {}
+for ds in sorted(os.listdir('data/')):
+
+    input_file = 'data/' + ds + '/' + ds + '-src.csv'
+    df = pd.read_csv(input_file, sep=';', header=0)
+    graph = nx.from_pandas_edgelist(df, 'from', 'to', edge_attr='strength')
+    graph = nx.convert_node_labels_to_integers(graph)
+    graph.remove_edges_from(nx.selfloop_edges(graph))
+    edges = list(graph.edges())
+    nodes = list(graph.nodes())
+
+    densities_all[ds] = len(edges) / comb(len(nodes), 2)
+    degree_avg[ds] = np.mean(list(dict(graph.degree).values()))
+    if 'grafo' in ds:
+        densities_rome[ds] = len(edges) / comb(len(nodes), 2)
+        n_rome[ds] = len(nodes)
+        m_rome[ds] = len(edges)
+        degree_avg_rome[ds] = np.mean(list(dict(graph.degree).values()))
+
+    if (ds not in tsnet_graphs) and ('grafo' not in ds):
+        own_graphs_n[ds] = len(nodes)
+        own_graphs_m[ds] = len(edges)
+        own_graphs_deg[ds] = np.mean(list(dict(graph.degree).values()))
+        own_graphs_density[ds] = len(edges) / comb(len(nodes), 2)
+
+
+for g in ['mesh1em6', 'grid', 'gridaug', 'GD96_c', 'grid1_dual', 'mesh3em5', 'L', 'stufe']:
+    print('& ' + str(own_graphs_n[g]) + ' & ' + str(own_graphs_m[g]) + ' & ' + str(own_graphs_density[g]) + ' & ' + str(own_graphs_deg[g]) + ' & ')

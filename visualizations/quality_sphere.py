@@ -59,7 +59,7 @@ class QualitySphere(SyncedCameraViewWidget):
 
         self.data = data
         self.parent = parent
-        self.setCameraPosition(distance=250)
+        self.setCameraPosition(distance=150)
         vertices = np.load(f'spheres/sphere{constants.samples}_points.npy')
         faces = np.load(f'spheres/sphere{constants.samples}_faces.npy')
         self.cmap = cmap
@@ -102,8 +102,8 @@ class QualitySphere(SyncedCameraViewWidget):
         painter = QPainter(self)
         painter.setPen(pg.mkPen('k'))
         painter.setBrush(pg.mkBrush('k'))
-        painter.drawLine(screen_width / 2 - 3, screen_height / 2, screen_width / 2 + 3, screen_height / 2)
-        painter.drawLine(screen_width / 2, screen_height / 2 - 3, screen_width / 2, screen_height / 2 + 3)
+        painter.drawLine(screen_width / 2 - 8, screen_height / 2, screen_width / 2 + 8, screen_height / 2)
+        painter.drawLine(screen_width / 2, screen_height / 2 - 8, screen_width / 2, screen_height / 2 + 8)
 
 
     def save_image(self):
