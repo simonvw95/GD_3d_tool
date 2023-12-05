@@ -68,8 +68,7 @@ for ds in datasets:
         print('Starting projections for the metrics of ' + str(ds))
         projs_list = []
         start = time.time()
-        for tech in ['tsNET']:
-        # for tech in ['SM']:
+        for tech in techniques:
             curr_metrics = data_frame[(data_frame['dataset_name'] == ds) & (data_frame['layout_technique'] == tech) & (data_frame['n_components'] == 3)]
             metrics_2d = curr_metrics[constants.metrics].to_numpy()[0]
             # add metrics of 2d
