@@ -4,6 +4,8 @@
 
 Python version 3.9.9 \
 Install packages with: 'pip install -r requirements.txt' \
+Original tool from https://github.com/WouterCastelein/Proj3D_views
+We adapted the tool to work for graph drawings and enhanced it by adding new features
 
 To create the 2D and 3D graph layouts: \
 Run runner.py
