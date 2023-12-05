@@ -58,8 +58,7 @@ for ds in datasets:
 
 # custom projections removing some metrics
 global_normalization = True
-for ds in ['rajat11.pkl']:
-# for ds in ['dwt_72.pkl', 'dwt_1005.pkl', 'grafo5197.pkl', 'grid17.pkl', 'mesh3e1.pkl', 'grafo10231.pkl']:
+for ds in datasets:
 
     name = 'metrics_projections_cr/' + ds.split('.')[0] + '_projcs_local.pkl'
     if global_normalization:

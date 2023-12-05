@@ -69,14 +69,10 @@ if __name__ == '__main__':
 
     with keepawake(keep_screen_awake=False):
         # manual
-        #all_dataset_names = ['EVA']
         # automatic every dataset
-        # all_dataset_names = os.listdir('data/')
-        all_dataset_names = os.listdir('rome_final/')
-        # all_dataset_names.remove('3elt')
+        all_dataset_names = os.listdir('data/')
         # layout technique selection, see above
-        # selection = 'A'
-        selection = 'C'
+        selection = 'A'
 
         # get the perplexities for tsnet
         perplx = constants.perplexities
@@ -87,7 +83,7 @@ if __name__ == '__main__':
         for dataset_name in all_dataset_names:
 
             print('Working on ' + str(dataset_name))
-            input_file = glob('rome_final/{0}/*-src.csv'.format(dataset_name))[0]
+            input_file = glob('data/{0}/*-src.csv'.format(dataset_name))[0]
 
             df = pd.read_csv(input_file, sep=';', header=0)
             graph = nx.from_pandas_edgelist(df, 'from', 'to', edge_attr = 'strength')
@@ -95,7 +91,7 @@ if __name__ == '__main__':
 
             selected_layouts = technique_names[selection]
 
-            gtds_file = 'rome_final/{0}/{0}-gtds.csv'.format(dataset_name)
+            gtds_file = 'data/{0}/{0}-gtds.csv'.format(dataset_name)
             if not os.path.isfile(gtds_file):
                 print('Creating and saving the gtds')
                 # save the graph theoretic shortest distances
@@ -111,7 +107,7 @@ if __name__ == '__main__':
 
                 for lay_name in selected_layouts:
 
-                    output_file = os.path.join('layouts_rome2d/', '{0}-{1}-{2}d.csv'.format(dataset_name, lay_name, n_components))
+                    output_file = os.path.join('layouts/', '{0}-{1}-{2}d.csv'.format(dataset_name, lay_name, n_components))
 
                     # if it doesnt exist
                     if not os.path.isfile(output_file) or overwrite:
