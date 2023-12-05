@@ -15,3 +15,4 @@ Lastly, run consolid_metrics.py, to generate a file that combines all metric val
 
 Now it should be possible to run the tool by executing visualize_metrics.py. 
 
+<video src='https://github.com/simonvw95/GD_3d_tool/blob/master/videos/3dlayout_example1.mp4' width=180/>
