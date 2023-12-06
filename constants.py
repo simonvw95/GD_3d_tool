@@ -8,18 +8,22 @@ perplexities = {'3elt' : 120, 'bcsstk09' : 80, 'block_2000' : 120, 'cage8' : 80,
                 'dwt_419' : 40, 'dwt_1005' : 40, 'EVA' : 600, 'grid17' : 40, 'jazz' : 120, 'lesmis' : 50, 'mesh3e1' : 40,
                 'netscience' : 80, 'price_1000' : 80, 'rajat11' : 120, 'sierpinski3d' : 120, 'us_powergrid' : 160, 'visbrazil' : 120
                 }
+
 samples = 1000
-hover_to_view = True  # Toggle for switching views by either hovering over bars, or clicking on bars
-scale_to_signal_range = False  # Toggle for zooming in histograms
-show_user_picked_viewpoints = False  # Only works if evaluationdata is passed to the tool, (see evaluation_analysis.py)
 
 metrics_dir = 'metrics_example'
 output_dir = 'layouts'
 analysis_dir = 'analysis'
 metrics_projects_dir = 'metrics_projections'
 
+debug_mode = False
 
+# deprecated code, may be used in the future for user-study
 user_mode = 'free'  # options: ['free', 'eval_full', 'eval_half', 'image', 'evalimage']
+hover_to_view = True  # Toggle for switching views by either hovering over bars, or clicking on bars
+scale_to_signal_range = False  # Toggle for zooming in histograms
+show_user_picked_viewpoints = False  # Only works if evaluationdata is passed to the tool, (see evaluation_analysis.py)
+
 # ordinal_datasets = ['Wine', 'Concrete', 'Software',]
 # ordinal_datasets = ['Grid']
 # categorical_datasets = ['AirQuality', 'Reuters', 'WisconsinBreastCancer']
@@ -30,19 +34,21 @@ categorical_datasets = []
 # required_view_count = 3
 # output_file = 'evaluationdata/evaluationdata.pkl'
 
-debug_mode = False
 
 # if we have metrics already then we should find the global minimum and maximum for each metric
+# i.e. for each metric, check all values from all 2D layouts and viewpoint layouts from ALL graphs
 if os.path.isfile(metrics_dir + '/metrics.pkl'):
+
     consolid_metrics = os.path.join(metrics_dir, 'metrics.pkl')
     data_frame = pd.read_pickle(consolid_metrics)
     metrics_col_idx = dict(zip(metrics, range(len(metrics))))
     techniques = set(data_frame['layout_technique'].to_list())
 
-
     metric_ds_agg = {}
     bounds_dict = {}
     scaled_vals = {}
+
+    # loop over all metrics
     for m in metrics:
         col_idx = metrics_col_idx[m]
         res = []
@@ -52,8 +58,10 @@ if os.path.isfile(metrics_dir + '/metrics.pkl'):
                     met_values = np.append(data_frame.iloc[i]['views_metrics'][:, col_idx], data_frame.iloc[i][m])
                     res.append(met_values)
         metric_ds_agg[m] = np.array(res).flatten()
+
         # global min and max
         bounds_dict[m] = (np.min(metric_ds_agg[m]), np.max(metric_ds_agg[m]))
+
         # we also want the mean
         glob_scal_val = bounds_dict[m][1] - bounds_dict[m][0]
         scaled_vals[m] = (metric_ds_agg[m] - bounds_dict[m][0]) / glob_scal_val
@@ -62,10 +70,11 @@ if os.path.isfile(metrics_dir + '/metrics.pkl'):
     glob_averages = np.mean(np.array(list(scaled_vals.values())).T, axis = 1)
     glob_averages_min, glob_averages_max = np.min(glob_averages), np.max(glob_averages)
 
+
 def get_consolid_metrics() -> pd.DataFrame:
 
-    consolid_metrics = os.path.join(metrics_dir, 'metrics.pkl')
-    df_consolid = pd.read_pickle(consolid_metrics)
+    consolid_metrics_var = os.path.join(metrics_dir, 'metrics.pkl')
+    df_consolid = pd.read_pickle(consolid_metrics_var)
 
     return df_consolid
 
@@ -79,4 +88,3 @@ def get_views_metrics(dataset, layout) -> np.ndarray:
     views_metrics = np.concatenate(df['views_metrics'].to_numpy())[:, 1:]
 
     return views_metrics
-    #return the metric values of each view
