@@ -13,7 +13,7 @@ hover_to_view = True  # Toggle for switching views by either hovering over bars,
 scale_to_signal_range = False  # Toggle for zooming in histograms
 show_user_picked_viewpoints = False  # Only works if evaluationdata is passed to the tool, (see evaluation_analysis.py)
 
-metrics_dir = 'metrics'
+metrics_dir = 'metrics_example'
 output_dir = 'layouts'
 analysis_dir = 'analysis'
 metrics_projects_dir = 'metrics_projections'
@@ -58,9 +58,9 @@ if os.path.isfile(metrics_dir + '/metrics.pkl'):
         glob_scal_val = bounds_dict[m][1] - bounds_dict[m][0]
         scaled_vals[m] = (metric_ds_agg[m] - bounds_dict[m][0]) / glob_scal_val
 
-# get the global average of all metrics
-glob_averages = np.mean(np.array(list(scaled_vals.values())).T, axis = 1)
-glob_averages_min, glob_averages_max = np.min(glob_averages), np.max(glob_averages)
+    # get the global average of all metrics
+    glob_averages = np.mean(np.array(list(scaled_vals.values())).T, axis = 1)
+    glob_averages_min, glob_averages_max = np.min(glob_averages), np.max(glob_averages)
 
 def get_consolid_metrics() -> pd.DataFrame:
 
