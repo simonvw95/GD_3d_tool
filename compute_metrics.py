@@ -25,10 +25,10 @@ def compute_metrics(coords, gtds_matrix, rad, edge_width):
     ns_res = norm_stress(coords, gtds_matrix)
 
     # crossing resolution
-    cr_res = crossing_res(coords, gtds_matrix)
+    cr_res = crossing_res_dev(coords, gtds_matrix)
 
     # angular resolution
-    ar_res = angular_resolution(coords, gtds_matrix)
+    ar_res = angular_resolution_dev(coords, gtds_matrix)
 
     # node resolution
     nr_res = node_resolution(coords)
@@ -58,10 +58,10 @@ def compute_metrics_parallel(coords, gtds_matrix, rad, edge_width):
     results['ns'] = norm_stress(coords, gtds_matrix)
 
     # crossing resolution
-    results['cr'] = crossing_res(coords, gtds_matrix)
+    results['cr'] = crossing_res_dev(coords, gtds_matrix)
 
     # angular resolution
-    results['ar'] = angular_resolution(coords, gtds_matrix)
+    results['ar'] = angular_resolution_dev(coords, gtds_matrix)
 
     # node resolution
     results['nr'] = node_resolution(coords)
