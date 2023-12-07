@@ -27,9 +27,12 @@ Additional quality metrics can be added to **metrics_gd.py**, do ensure that the
 
 ## Demonstrations
 
+A 3D graph drawing can be rotated by dragging the cursor in the graph widget or by dragging the cursor in the quality metric sphere widget. In the quality metric sphere widget a viewpoint is given a color depending on the value of the quality metric score of that viewpoint's layout. Here, the quality metric is stress.
+
 https://github.com/simonvw95/GD_3d_tool/assets/55921054/beba1bc3-a9f3-4d1f-b59c-2f48e3c04675
 
 
+Here, the quality metric is the crossing number.
 
 https://github.com/simonvw95/GD_3d_tool/assets/55921054/837de0ad-ce35-40f2-81ff-393bbf6e46fb
 
