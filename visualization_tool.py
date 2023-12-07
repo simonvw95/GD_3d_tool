@@ -29,7 +29,7 @@ from visualizations.parallel_bar_plot import parallelBarPlot
 
 
 class Tool(pg.GraphicsWindow):
-    def __init__(self, dataset_name="grafo10231", default_layout_technique="FA2", default_proj_choice = 'global norm', analysis_data=None):
+    def __init__(self, dataset_name = "3elt", default_layout_technique = "FA2", default_proj_choice = 'global norm', analysis_data = None):
         super(Tool, self).__init__()
 
         keyboard.on_press(self.keyboard_event)
@@ -40,7 +40,7 @@ class Tool(pg.GraphicsWindow):
         self.proj_choice = default_proj_choice
         self.view_locked = False
 
-        # Grid initialization of the window
+        # grid initialization of the window
         self.setBackground((0, 0, 0, 60))
         self.layoutgb = QtWidgets.QGridLayout()
         self.layoutgb.setHorizontalSpacing(1)
@@ -66,6 +66,7 @@ class Tool(pg.GraphicsWindow):
 
         # get the view points and initialize the starting metric and some variables
         self.view_points = np.load(f'spheres/sphere{constants.samples}_points.npy')
+
         # get the minima and maxima of all the quality metrics
         bounds_dict = constants.bounds_dict
         self.mins_global = np.array(list(bounds_dict.values()))[:, 0]
@@ -560,9 +561,9 @@ class Tool(pg.GraphicsWindow):
     def initialize_metric_proj(self, proj_choice):
 
         # get the data, local normalization projection or global normalization projection
-        name = F"{constants.metrics_projects_dir}/{self.dataset_name}_projcs_local.pkl"
-        if proj_choice[0:6] == 'global':
-            name = F"{constants.metrics_projects_dir}/{self.dataset_name}_projcs_global.pkl"
+        name = F"{constants.metrics_projects_dir}/{self.dataset_name}_projcs_global.pkl"
+        if proj_choice[0:6] == 'local':
+            name = F"{constants.metrics_projects_dir}/{self.dataset_name}_projcs_local.pkl"
         data = pd.read_pickle(name)
 
         curr_row = data[data['layout_technique'] == self.default_layout_technique]
@@ -581,9 +582,9 @@ class Tool(pg.GraphicsWindow):
         proj_data /= scale_val
         self.proj_data = proj_data
 
-        coloring_norm = self.avg_met_vals_local
-        if proj_choice[0:6] == 'global':
-            coloring_norm = self.avg_met_vals_global
+        coloring_norm = self.avg_met_vals_global
+        if proj_choice[0:6] == 'local':
+            coloring_norm = self.avg_met_vals_local
 
         self.coloring_norm_proj = coloring_norm
 
@@ -951,20 +952,3 @@ class Tool(pg.GraphicsWindow):
                 return
 
         QtCore.QTimer.singleShot(5000, lambda: self.save_user_selected_view_snapshots(index + 1, set = set))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
