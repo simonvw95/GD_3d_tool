@@ -36,3 +36,26 @@ Here, the quality metric is the crossing number.
 
 https://github.com/simonvw95/GD_3d_tool/assets/55921054/837de0ad-ce35-40f2-81ff-393bbf6e46fb
 
+For each quality metric we have a histogram of the distribution of that quality metric's values of all the viewpoint layouts. For the histogram these values are normalized w.r.t. all viewpoint quality metric values in order to show a more visible distribution. The histograms are linked with a line to indicate that the selected viewpoint layout has the corresponding quality metric values. By rotating the quality metric sphere or 3D graph layout the values in the highlighted portion in the histogram changes to show where the quality metrics of the current viewpoint lie. It is also possible to manually move over the histogram bars to find which viewpoint(s) correspond to which values in the quality metric's histogram.
+
+https://github.com/simonvw95/GD_3d_tool/assets/55921054/7a894e30-419b-41b5-bf99-2c4e759378b6
+
+For each graph and layout technique combination we acquire all metric values of all the viewpoint layouts and the metric values of the 2D graph layout. The resulting 1001x9 dataset (1000 viewpoint layouts, 1 2D graph layout, 9 quality metrics) is reduced to a 2D space using t-SNE and plotted. The colors for the points are chosen based on the linear combination of the quality metrics. The rotation of the 3D graph layout and the quality metric sphere is linked to the 2D projection scatterplot, where the current viewpoint is highlighted with a yellow cross marker.
+
+https://github.com/simonvw95/GD_3d_tool/assets/55921054/75acfe7b-6c08-4371-9fb3-10e6757c2f9c
+
+The tool also has two additional widgets. The settings widget: here the user can choose the graph, layout technique, and the quality metric of the quality metric sphere. Additionally, the user can use buttons to find the best solution according to a linear combination of all metrics or a linear combination of normalized metrics. Moreover, the user can also set weights to the quality metrics rather than each metric having equal weight for the linear combination.
+
+![settings_widget](https://github.com/simonvw95/GD_3d_tool/assets/55921054/5e7ebbef-52c8-444d-9fad-e49434c4a221)
+
+The information widget: here the user is displayed some additional information about the viewpoint layouts compared to the 2D graph layout. For each metric, the percentage of viewpoint layouts with higher quality metric values than the 2D graph layout is given, as well as the difference between the best viewpoint layout and the 2D graph layout. Their non-normalized values are also given.
+
+![statistics_widget](https://github.com/simonvw95/GD_3d_tool/assets/55921054/d2e4602a-b150-4f64-93da-97486b35dab1)
+
+Lastly, by putting all widgets together we have an overview of the entirety of the tool:
+![tool](https://github.com/simonvw95/GD_3d_tool/assets/55921054/6edfe3db-1a76-48b3-81c4-fde19feb444d)
+
+
+
+
+
