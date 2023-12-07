@@ -77,7 +77,7 @@ def compute_metrics_parallel(coords, gtds_matrix, rad, edge_width):
     results['cn'] = crossings_number(coords, gtds_matrix)
 
     # edge-edge occlusion case 2: edges that are practically on top of each other (w.r.t. a certain margin)
-    results['ee'] = edge_edge_occl(coords, gtds_matrix, r, edge_width)
+    results['ee'] = edge_edge_occl(coords, gtds_matrix, rad, edge_width)
 
     # edge length deviation
     results['el'] = edge_lengths_sd(coords, gtds_matrix)
@@ -175,7 +175,7 @@ if __name__ == '__main__':
                 pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
                 start_parallel = time.time()
                 try:
-                    parallel_metrics_with_gtds = partial(compute_metrics_parallel, gtds=gtds, r = r, width = width)
+                    parallel_metrics_with_gtds = partial(compute_metrics_parallel, gtds_matrix = gtds, rad = r, edge_width = width)
                     res_iter = pool.map(parallel_metrics_with_gtds, [view for view in views])
                 except Exception as e:
                     print(e)
