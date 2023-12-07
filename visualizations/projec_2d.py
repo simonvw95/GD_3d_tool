@@ -1,9 +1,10 @@
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QLabel
 import pyqtgraph as pg
 import numpy as np
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QLabel
+
 import constants
-import copy
+
 
 class Scatter2D(pg.PlotWidget):
     def __init__(self, data, avg_metric_vals, cmap, parent, title="2D Projection of metrics", *args, **kwargs):
@@ -85,9 +86,9 @@ class Scatter2D(pg.PlotWidget):
 
         # take the first point that appears
         if len(points) > 0:
-            pt = points[0]
+            pt = points[-1]
             mask = self.scatter_item._maskAt(pt.pos())
-            idx = np.where(mask)[0][0]
+            idx = np.where(mask)[0][-1]
 
             if idx < constants.samples:
                 self.parent.move_to_viewpoint(self.parent.view_points[idx])
