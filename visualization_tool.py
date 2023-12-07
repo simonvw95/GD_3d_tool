@@ -147,14 +147,14 @@ class Tool(pg.GraphicsWindow):
             self.metric_picker.currentIndexChanged.connect(self.data_selected)
 
             # create a drop down list to pick different versions of the quality metrics projection plot
-            self.projection_picker = pg.ComboBox(items = ['Local norm', 'global norm'], default = 'global norm')
-            self.projection_picker.currentIndexChanged.connect(self.change_proj_type)
+            # self.projection_picker = pg.ComboBox(items = ['local norm', 'global norm'], default = 'global norm')
+            # self.projection_picker.currentIndexChanged.connect(self.change_proj_type)
 
             # add a few labels indicating what each drop down list does
             self.menu.addLabel(text="Dataset:", row=len(self.menu.rows), col=0)
             self.menu.addWidget(self.dataset_picker, len(self.menu.rows), 0)
-            self.menu.addLabel(text="Projection type:", row=len(self.menu.rows), col=1)
-            self.menu.addWidget(self.projection_picker, len(self.menu.rows), 1)
+            # self.menu.addLabel(text="Projection type:", row=len(self.menu.rows), col=1)
+            # self.menu.addWidget(self.projection_picker, len(self.menu.rows), 1)
 
             self.menu.addLabel(text="Layout technique:", row=len(self.menu.rows), col=0)
             self.menu.addWidget(self.layout_technique_picker, len(self.menu.rows), 0)
@@ -562,7 +562,7 @@ class Tool(pg.GraphicsWindow):
 
         # get the data, local normalization projection or global normalization projection
         name = F"{constants.metrics_projects_dir}/{self.dataset_name}_projcs_global.pkl"
-        if proj_choice[0:6] == 'local':
+        if proj_choice[0:5] == 'local':
             name = F"{constants.metrics_projects_dir}/{self.dataset_name}_projcs_local.pkl"
         data = pd.read_pickle(name)
 
@@ -583,7 +583,7 @@ class Tool(pg.GraphicsWindow):
         self.proj_data = proj_data
 
         coloring_norm = self.avg_met_vals_global
-        if proj_choice[0:6] == 'local':
+        if proj_choice[0:5] == 'local':
             coloring_norm = self.avg_met_vals_local
 
         self.coloring_norm_proj = coloring_norm
@@ -749,6 +749,7 @@ class Tool(pg.GraphicsWindow):
         self.dataset_name = dataset_name
         self.default_layout_technique = layout_technique
         metrics_file = constants.metrics_dir + '/metrics_' + self.dataset_name + '.pkl'
+        metrics_file = r""+metrics_file
         #metrics_file = os.path.join(constants.metrics_dir, F'metrics_{self.dataset_name}.pkl')
         #df = pd.read_pickle(metrics_file)
 
