@@ -8,8 +8,7 @@ Original tool from https://github.com/WouterCastelein/Proj3D_views \
 We adapted the tool to work for graph drawings and enhanced it by adding new features
 
 ### Minimal example
-#### Note: Due to unresolved pickling errors with git please follow steps 3-7 below.  (To be solved)
-With a single git clone, the tool should be usable for three example graphs provided in the GitHub repository. Simply run **visualize_metrics.py**. To use the tool for your own graphs please follow the instructions below.
+With a single git clone, the tool should be usable for three example graphs provided in the GitHub repository. Please run the **json_to_pickle.py** script to put the datafiles in the correct format. Then Simply run **visualize_metrics.py** to use the tool for three example graphs. To use the tool for your own graphs please follow the instructions below.
 
 ### Personal dataset/graphs
 
