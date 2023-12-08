@@ -8,7 +8,7 @@ Original tool from https://github.com/WouterCastelein/Proj3D_views \
 We adapted the tool to work for graph drawings and enhanced it by adding new features
 
 ### Minimal example
-With a single git clone, the tool should be usable for three example graphs provided in the GitHub repository. Please run the **json_to_pickle.py** script to put the datafiles in the correct format. Then Simply run **visualize_metrics.py** to use the tool for three example graphs. To use the tool for your own graphs please follow the instructions below.
+With a single git clone (make sure you use git lfs to properly clone the csv files or dowload the csv files manually), the tool should be usable for three example graphs provided in the GitHub repository. Please run the **json_to_pickle.py** script to put the datafiles in the correct format. Then Simply run **visualize_metrics.py** to use the tool for three example graphs. To use the tool for your own graphs please follow the instructions below.
 
 ### Personal dataset/graphs
 
@@ -23,6 +23,10 @@ With a single git clone, the tool should be usable for three example graphs prov
 If you have already gone through the above steps and wish to add a new graph to your dataset, simply repeat steps 1-7. The following three (computing-intensive) scripts **runner.py**, **compute_metrics.py** and **projections.py** will check if computations for a particular graph have already been made and therefore will not repeat the same computations unless instructed with the **overwrite** variable.
 
 Additional quality metrics can be added to **metrics_gd.py**, do ensure that these are bound between [0, 1] with 1 being the best score. Additionally, modifications will have to be made to **compute_metrics.py** and **constants.py**.
+
+### Troubleshooting
+1. When cloning the repository, ensure you are using git lfs to clone the project. When git lfs is not used the .csv files in the data directory will only point towards the uploaded csv files.
+2. The tool sometimes freezes and fails to select a new graph: ensure that pandas is the correct version (1.3.5). If the tool still fails to select a new graph occasionally, wait a few seconds and select different graphs (unresolved bug).
 
 ## Demonstrations
 
