@@ -8,11 +8,11 @@ Original tool from https://github.com/WouterCastelein/Proj3D_views \
 We adapted the tool to work for graph drawings and enhanced it by adding new features
 
 ### Minimal example
-With a single git clone (make sure you use git lfs to properly clone the csv files or dowload the csv files manually), the tool should be usable for three example graphs provided in the GitHub repository. Please run the **json_to_pickle.py** script to put the datafiles in the correct format. Then Simply run **visualize_metrics.py** to use the tool for three example graphs. To use the tool for your own graphs please follow the instructions below.
+With a single git clone (make sure you use git lfs to properly clone the csv files or dowload the csv files manually), the tool should be usable for three example graphs provided in the GitHub repository. Please run the **json_to_pickle.py** script to put the datafiles in the correct format. Then simply run **visualize_metrics.py** to use the tool for three example graphs. To use the tool for your own graphs please follow the instructions below.
 
 ### Personal dataset/graphs
 
-1. Add source files of your graphs to the /data/ directory by adding a directory with the graphsname and name them graph file as such "graphname-src.csv". E.g. /data/3elt/3elt-src.csv . The graph file should be a .csv containing the edgelist. For the precise format (including delimiter) view one of the example graphs. The "graphname-gtds.csv" file will be automatically generated once **runner.py** is executed. 
+1. Add source files of your graphs to the /data/ directory by adding a directory with the graphsname and name the graph file as such "graphname-src.csv". E.g. /data/3elt/3elt-src.csv . The graph file should be a .csv containing the edgelist. For the precise format (including delimiter) view one of the example graphs. The "graphname-gtds.csv" file will be automatically generated once **runner.py** is executed. 
 2. To create the 2D and 3D graph layouts: Run **runner.py**
 3. To compute the 1000 views of all the 3D graph layouts: Run **compute_views.py**.
 4. To compute the metric values for all 2D graph layouts and all viewpoint layouts of the 3D graph layouts: Run **compute_metrics.py**. Note, this may take some time depending on the size of the graphs and number of graphs chosen, and the number of cores on your cpu.
