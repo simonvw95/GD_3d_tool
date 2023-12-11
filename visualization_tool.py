@@ -101,6 +101,7 @@ class Tool(pg.GraphicsWindow):
         data_frame = pd.read_pickle(consolid_metrics)
         D_P_dict = {}
         datasets = set(data_frame['dataset_name'].to_list())
+
         for dataset in datasets:
             D_P_dict[dataset.split('.')[0]] = set(data_frame[data_frame['dataset_name'] == dataset]['layout_technique'].to_list())
 
@@ -197,6 +198,7 @@ class Tool(pg.GraphicsWindow):
             self.weights = {}
             self.slider_buttons_min = {}
             self.slider_buttons_max = {}
+
             # create sliders for the quality metrics
             for i in range(self.n_metrics):
 
@@ -268,6 +270,7 @@ class Tool(pg.GraphicsWindow):
 
     # updating the weights according to the values given in the sliders
     def update_weights(self, value):
+
         # get the name of the object
         sender = self.sender()
         name = sender.objectName()
@@ -277,6 +280,7 @@ class Tool(pg.GraphicsWindow):
 
     # updating the weights according to a button
     def update_weights_button(self, value):
+
         # get the name of the object
         sender = self.sender()
         name = sender.objectName()
@@ -456,7 +460,6 @@ class Tool(pg.GraphicsWindow):
     # initialize the qualitymetric sphere
     def initialize_sphere(self, sphere_sum = None):
 
-
         double_bar = False
         # # add the viewpoint quality metric data to the sphere
         if sphere_sum == 'Weighted sum of metrics (raw)':
@@ -548,6 +551,7 @@ class Tool(pg.GraphicsWindow):
 
     # initialize the histogram, uses the parallelBarPlot class from parallel_bar_plot script
     def initialize_histogram(self):
+
         self.hist = parallelBarPlot(self.views_metrics, self.metrics_2d, self.metrics_3d, self.view_points, parent=self)
         self.hist.setBackground('w')
 
@@ -627,6 +631,7 @@ class Tool(pg.GraphicsWindow):
     # since we have a fixed number of viewpoints, rotating the sphere might select a viewpoint that has not been computed
     # simply compute the distance to the nearest viewpoint and return that
     def current_quality(self):
+
         eye = self.sphere.cameraPosition()
         eye.normalize()
 
@@ -647,10 +652,12 @@ class Tool(pg.GraphicsWindow):
 
     # deprecated but may be used in the future for user study
     def angle(self, v1, v2):
+
         n_v1 = self.unit_vector(np.array(v1))
         n_v2 = self.unit_vector(np.array(v2))
         dot = np.dot(n_v1, n_v2)
         angle = np.arccos(np.clip(dot, -1.0, 1.0))
+
         return angle
 
     # deprecated but may be used in the future for user study
@@ -669,6 +676,7 @@ class Tool(pg.GraphicsWindow):
 
     # highlights the values of the viewpoint metrics on the histogram
     def highlight(self):
+
         if not self.view_locked:
             # get the closest viewpoint
             nearest_values = self.current_quality()
@@ -699,6 +707,7 @@ class Tool(pg.GraphicsWindow):
 
     # move to a certain view based on the parallel bar plot
     def move_to_view(self, metric_index, bin_index, metric_value_l, metric_value_r, percentage):
+
         if not self.view_locked:
             a = self.views_metrics[:, metric_index]
             indices = np.argwhere(np.logical_and(a >= metric_value_l, a <= metric_value_r)).flatten()
@@ -709,6 +718,7 @@ class Tool(pg.GraphicsWindow):
 
     # move to a certain viewpoint based on the sphere rotation, updates the 3d graph layout and sphere
     def move_to_viewpoint(self, viewpoint):
+
         self.curr_viewpoint = viewpoint
         viewpoint_spherical = utils.rectangular_to_spherical(np.array([viewpoint]))[0]
         self.sphere.setCameraPosition(azimuth=viewpoint_spherical[1], elevation=viewpoint_spherical[0],
@@ -720,17 +730,20 @@ class Tool(pg.GraphicsWindow):
 
     # attached to the data selection drop down menu, selects dataset
     def data_selected(self):
+
         dataset_name = self.dataset_picker.value()
         layout_technique = self.layout_technique_picker.value()
         self.set_data(dataset_name, layout_technique)
         self.metric_selected(self.metric_picker.value())
 
     def change_proj_type(self):
+
         self.proj_choice = self.projection_picker.value()
         self.initialize_metric_proj(self.proj_choice)
 
     # attached to the metric selection drop down menu, selects the metric
     def metric_selected(self, metric):
+
         if self.metric_picker.value() in constants.metrics:
             self.current_metric = metric
             self.initialize_sphere()
