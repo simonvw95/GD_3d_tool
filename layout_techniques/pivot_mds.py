@@ -1,9 +1,6 @@
 import numpy as np
 import networkx as nx
 
-# translated from https://github.com/schochastics/graphlayouts/blob/main/R/layout_large_graphs.R
-# using chatGPT (yes really)
-
 
 def pivot_mds(g, pivots = 5, weights = None, D = None, dim = 2):
 
