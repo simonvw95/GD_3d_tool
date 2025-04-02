@@ -1,4 +1,4 @@
-# 3D VS 2D Graph Drawing: An Experimental Evaluation
+# 3D VS 2D Graph Drawing: An Experimental Evaluation of Viewpoint-Based 3D Graph Drawing
 
 # Running instructions
 
